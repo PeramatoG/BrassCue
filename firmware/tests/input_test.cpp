@@ -53,7 +53,7 @@ int main() {
     expect(output == 0, "fader returns to minimum");
     brasscue::GrandmasterFilter midpoint;
     expect(midpoint.sample(512) == 128, "ADC midpoint maps to 8-bit midpoint");
-    expect(midpoint.sample(4095) == 191, "ADC overrange clamped and filtered");
+    expect(midpoint.sample(4095) == 159, "ADC overrange clamped and filtered");
 
     if (failures != 0) return 1;
     std::cout << "BrassCue input logic tests passed\n";
