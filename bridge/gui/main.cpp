@@ -6,16 +6,17 @@
 #include <wx/dcbuffer.h>
 #include <wx/statline.h>
 #include <array>
+#include <algorithm>
 #include <memory>
 #include <stdexcept>
 
 namespace {
-constexpr wxColour kBackground(22, 24, 29);
-constexpr wxColour kSurface(33, 37, 44);
-constexpr wxColour kRaised(43, 48, 56);
-constexpr wxColour kBrass(205, 161, 84);
-constexpr wxColour kMuted(174, 180, 186);
-constexpr wxColour kText(238, 232, 219);
+const wxColour kBackground(22, 24, 29);
+const wxColour kSurface(33, 37, 44);
+const wxColour kRaised(43, 48, 56);
+const wxColour kBrass(205, 161, 84);
+const wxColour kMuted(174, 180, 186);
+const wxColour kText(238, 232, 219);
 
 wxStaticText* MakeLabel(wxWindow* parent, const wxString& text, int pt = 10, bool strong = false) {
     auto* label = new wxStaticText(parent, wxID_ANY, text);
