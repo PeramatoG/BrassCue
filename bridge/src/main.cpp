@@ -1,4 +1,9 @@
 #include "bridge_core.hpp"
+#include "serial_protocol.hpp"
+#ifdef _WIN32
+#include "serial_port_win.hpp"
+#include <conio.h>
+#endif
 
 #include <array>
 #include <cstdint>
@@ -101,21 +106,79 @@ void show(const brasscue::State& state) {
 
 void usage() {
     std::cout << "BrassCue Bridge - simulated controls (no Arduino required)\n"
-              << "Usage: brasscue-bridge [--simulate] [--target IPv4] [--universe 0..32767]\n"
+              << "Usage: brasscue-bridge [--simulate | --port COM3] [--ignore-gm] [--target IPv4] [--universe 0..32767]\n"
               << "No network traffic unless --target is specified. UDP Art-Net port 6454.\n"
               << "Commands: r/g/b/w/m <0..255> (0xFF also works), show, send, help, quit\n";
 }
+
+
+#ifdef _WIN32
+int run_serial(const std::string& port, UdpTarget* udp,
+               const std::string& target, std::uint16_t universe, bool ignore_gm) {
+    brasscue::SerialPort serial(port);
+    brasscue::State state;
+    std::cout << "BrassCue USB bridge on " << port
+              << " (115200 baud). Close Arduino Serial Monitor. Press Q to quit.\n";
+    std::cout << (ignore_gm ? "Floating grandmaster input ignored.\n"
+                           : "Grandmaster input enabled.\n");
+    // Opening the port resets the Uno. Wait for bootloader to finish and then
+    // request a fresh READY announcement; no state is sent until READY.
+    Sleep(2000);
+    serial.send("BC1 HELLO\n");
+    bool ready = false;
+    std::string line;
+    while (true) {
+        if (_kbhit()) {
+            const int key = _getch();
+            if (key == 'q' || key == 'Q') break;
+        }
+        while (serial.read_line(line)) {
+            brasscue::DeviceEvent event;
+            if (!brasscue::parse_device_message(line, event)) {
+                // Old diagnostic messages and noise are intentionally ignored.
+                continue;
+            }
+            if (event.type == brasscue::EventType::Ready) {
+                ready = true;
+                serial.send(brasscue::serialize_state(state));
+                std::cout << "Arduino ready: sent initial RGBW/master state.\n";
+            } else if (event.type == brasscue::EventType::StateAck) {
+                std::cout << "Arduino acknowledged state.\n";
+            } else if (ready) {
+                if (event.type == brasscue::EventType::Button) {
+                    std::cout << "Button " << event.index
+                              << (event.value ? " DOWN\n" : " UP\n");
+                } else if (brasscue::apply_event(state, event, ignore_gm)) {
+                    show(state);
+                    serial.send(brasscue::serialize_state(state));
+                    if (udp) {
+                        udp->send(brasscue::build_artdmx(state, universe));
+                        std::cout << "[ArtDmx sent to " << target
+                                  << ":6454; port-address " << universe << "]\n";
+                    }
+                }
+            }
+        }
+        Sleep(5);
+    }
+    return 0;
+}
+#endif
 
 } // namespace
 
 int main(int argc, char** argv) {
     try {
         std::string target;
+        std::string serial_port;
+        bool ignore_gm = false;
         std::uint16_t universe = 0;
         for (int i = 1; i < argc; ++i) {
             const std::string arg = argv[i];
             if (arg == "--help" || arg == "-h") { usage(); return 0; }
             if (arg == "--simulate") continue;
+            if (arg == "--ignore-gm") { ignore_gm = true; continue; }
+            if (arg == "--port" && i + 1 < argc) { serial_port = argv[++i]; continue; }
             if (arg == "--target" && i + 1 < argc) { target = argv[++i]; continue; }
             if (arg == "--universe" && i + 1 < argc) {
                 universe = static_cast<std::uint16_t>(parse_uint(argv[++i], 32767));
@@ -126,6 +189,13 @@ int main(int argc, char** argv) {
 
         std::unique_ptr<UdpTarget> udp;
         if (!target.empty()) udp = std::make_unique<UdpTarget>(target);
+        if (!serial_port.empty()) {
+#ifdef _WIN32
+            return run_serial(serial_port, udp.get(), target, universe, ignore_gm);
+#else
+            throw std::runtime_error("--port serial mode currently requires Windows");
+#endif
+        }
 
         brasscue::State state;
         usage();
@@ -133,7 +203,7 @@ int main(int argc, char** argv) {
 
         auto emit = [&] {
             if (!udp) {
-                std::cout << "[simulation only — network disabled]\n";
+                std::cout << "[simulation only - network disabled]\n";
             } else {
                 udp->send(brasscue::build_artdmx(state, universe));
                 std::cout << "[sent ArtDmx to " << target << ":6454, port-address "
