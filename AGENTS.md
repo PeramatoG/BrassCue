@@ -22,6 +22,14 @@
 - State is 8-bit RGBW plus an 8-bit grandmaster. Test scaling and ArtDmx packet serialization.
 - Do not advertise USB serial support, fixture patching, DMX timing, or stage-readiness until implemented and verified.
 
+## GUI direction
+- Use wxWidgets (wx::core / wx::base) from the user's existing classic vcpkg x64-windows installation.
+- Preserve headless C++ core/CLI targets and CI without wxWidgets by keeping GUI optional in CMake.
+- Design Windows UI with a restrained dark palette and brass accents; favor legibility, resizing and accessible controls over decoration.
+- Keep calculations, Art-Net framing and protocol semantics in shared testable modules, not wx event callbacks.
+- GUI simulation must not silently claim to be connected to the Uno: USB COM integration is future work.
+- Do not introduce wxWidgets into the portable serial/core unit tests.
+
 ## Validation
 - Build and run `ctest` for each relevant Bridge change.
 - Include unit tests for value scaling and Art-Net framing when editing those areas.
