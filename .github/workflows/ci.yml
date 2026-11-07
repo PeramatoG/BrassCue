@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S . -B build -DBUILD_TESTING=ON
+        run: cmake -S . -B build -DBUILD_TESTING=ON -DBRASSCUE_BUILD_GUI=OFF
       - name: Build
         run: cmake --build build --config Release
       - name: Tests
