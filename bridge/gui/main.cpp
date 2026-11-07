@@ -54,14 +54,14 @@ private:
         dc.SetBackground(wxBrush(kSurface));
         dc.Clear();
         const wxSize size = GetClientSize();
-        const int side = std::max(1, std::min(size.GetWidth(), size.GetHeight()) - 26);
+        const int side = (std::max)(1, (std::min)(size.GetWidth(), size.GetHeight()) - 26);
         const int x = (size.GetWidth() - side) / 2, y = (size.GetHeight() - side) / 2;
         auto scaled = [&](std::size_t i) -> int {
             return brasscue::apply_master(state_.rgbw[i], state_.master);
         };
         // Additive RGBW visualization; white is added to each RGB component.
         const int w = scaled(3);
-        const auto clamp = [](int v) -> unsigned char { return static_cast<unsigned char>(std::min(255, v)); };
+        const auto clamp = [](int v) -> unsigned char { return static_cast<unsigned char>((std::min)(255, v)); };
         dc.SetPen(wxPen(kBrass, 2));
         dc.SetBrush(wxBrush(wxColour(clamp(scaled(0) + w),
                                         clamp(scaled(1) + w),
@@ -199,7 +199,7 @@ public:
 private:
     void Nudge(int channel, int change) {
         const int current = state_.rgbw[static_cast<std::size_t>(channel)];
-        const auto value = static_cast<std::uint8_t>(std::max(0, std::min(255, current + change)));
+        const auto value = static_cast<std::uint8_t>((std::max)(0, (std::min)(255, current + change)));
         state_.rgbw[static_cast<std::size_t>(channel)] = value;
         sliders_[channel]->SetValue(value);
         StateChanged();
