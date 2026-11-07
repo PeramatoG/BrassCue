@@ -16,3 +16,11 @@ if(BUILD_TESTING)
   target_compile_features(brasscue-serial-test PRIVATE cxx_std_17)
   add_test(NAME brasscue-serial COMMAND brasscue-serial-test)
 endif()
+
+# Windows wxWidgets UI is opt-in, keeping the core/CLI and cross-platform CI headless.
+if(WIN32 AND BRASSCUE_BUILD_GUI)
+  find_package(wxWidgets CONFIG REQUIRED COMPONENTS core base)
+  add_executable(brasscue-gui WIN32 gui/main.cpp)
+  target_compile_features(brasscue-gui PRIVATE cxx_std_17)
+  target_link_libraries(brasscue-gui PRIVATE wx::core wx::base ws2_32)
+endif()
