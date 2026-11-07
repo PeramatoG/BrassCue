@@ -9,7 +9,7 @@ The GUI renders four RGBW controls (sliders with ±1 nudge buttons), a grandmast
 
 ## Windows / Visual Studio 2026 using installed classic vcpkg
 
-The GUI is optional; `BRASSCUE_BUILD_GUI` defaults to OFF so normal CLI and Linux/Windows CI continue compiling without wxWidgets.
+The GUI is **enabled by default on Windows** (`BRASSCUE_BUILD_GUI=ON`). Linux builds default to OFF, and the existing Windows/Linux core CI explicitly sets `BRASSCUE_BUILD_GUI=OFF` because its runners do not install wxWidgets. Set `-DBRASSCUE_BUILD_GUI=OFF` only when you intentionally need a headless build.
 
 BrassCue expects a **pre-existing** classic vcpkg installation with `wxwidgets:x64-windows` (as already used for Perastage). It does not run `vcpkg install` or use manifest mode automatically.
 
@@ -29,7 +29,7 @@ ctest --test-dir out/gui-x64 -C Debug --output-on-failure
 
 If the existing checkout does not have a wxWidgets package configuration for x64-windows, use the same package setup you already use for Perastage; do not install another toolchain just for BrassCue. A different generator (Ninja) may place the executable directly in `out/gui-x64/bridge/`.
 
-Visual Studio's CMake settings can pass the same cache variables. The `-A x64` argument applies to a Visual Studio multi-configuration generator and should be omitted if using Ninja.
+Visual Studio's CMake settings can pass the same cache variables. The `-A x64` argument applies to a Visual Studio multi-configuration generator and should be omitted if using Ninja. **CMake options are cached:** if your existing Visual Studio build folder was configured with `BRASSCUE_BUILD_GUI=OFF`, changing the default does not overwrite that cache. Set the option to ON in CMake settings or reconfigure that build directory with `-DBRASSCUE_BUILD_GUI=ON`.
 
 ## Test behavior
 1. Drag sliders / use ±1 buttons and see decimal/hex plus output DMX 1–4 update.
@@ -39,7 +39,7 @@ Visual Studio's CMake settings can pass the same cache variables. The `-A x64` a
 5. The existing headless CLI and native tests must continue to work.
 
 ### Known limitations
-- This is a first desktop GUI and has not yet been compiled against the user's local wxWidgets installation.
+- This is a first desktop GUI; the Windows build requires the user's existing wxWidgets/vcpkg toolchain and should be verified locally before merge.
 - Native sliders + incremental buttons are placeholders for visually styled rotary controls; final hardware encoder behavior and presets are separate milestones.
 - The GUI currently sends DMX on control changes and the Send button, **not continuously**. Changing the IP requires disable/re-enable. Changing universe takes effect on the next send. No automatic discovery, reconnection or fail-safe.
 - No COM transport, live Arduino feedback, presets, transitions or DMX patch/profile editor in the GUI yet.
