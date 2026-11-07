@@ -17,10 +17,11 @@ if(BUILD_TESTING)
   add_test(NAME brasscue-serial COMMAND brasscue-serial-test)
 endif()
 
-# Windows wxWidgets UI is opt-in, keeping the core/CLI and cross-platform CI headless.
+# Windows wxWidgets UI builds by default. CI can explicitly disable it for headless checks.
 if(WIN32 AND BRASSCUE_BUILD_GUI)
   find_package(wxWidgets CONFIG REQUIRED COMPONENTS core base)
   add_executable(brasscue-gui WIN32 gui/main.cpp)
   target_compile_features(brasscue-gui PRIVATE cxx_std_17)
+  target_compile_definitions(brasscue-gui PRIVATE NOMINMAX)
   target_link_libraries(brasscue-gui PRIVATE wx::core wx::base ws2_32)
 endif()
