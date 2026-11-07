@@ -21,7 +21,8 @@ inline bool decimal(const std::string& token, int maximum, int& value) {
     int n = 0;
     for (unsigned char c : token) {
         if (c < '0' || c > '9') return false;
-        if (n > (maximum - int(c - '0')) / 10) return false;
+        const int digit = int(c - '0');
+        if (digit > maximum || n > (maximum - digit) / 10) return false;
         n = n * 10 + int(c - '0');
     }
     value = n;
