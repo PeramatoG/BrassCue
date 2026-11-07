@@ -6,6 +6,7 @@
 #endif
 
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
@@ -121,13 +122,20 @@ int run_serial(const std::string& port, UdpTarget* udp,
               << " (115200 baud). Close Arduino Serial Monitor. Press Q to quit.\n";
     std::cout << (ignore_gm ? "Floating grandmaster input ignored.\n"
                            : "Grandmaster input enabled.\n");
-    // Opening the port resets the Uno. Wait for bootloader to finish and then
-    // request a fresh READY announcement; no state is sent until READY.
-    Sleep(2000);
-    serial.send("BC1 HELLO\n");
+    // The Uno announces READY after resetting when the COM port opens.
+    // Only request HELLO if that spontaneous announcement never arrives.
+    using Clock = std::chrono::steady_clock;
+    const auto startup = Clock::now();
+    Clock::time_point last_ready{};
+    bool hello_sent = false;
     bool ready = false;
     std::string line;
     while (true) {
+        if (!ready && !hello_sent &&
+            Clock::now() - startup >= std::chrono::milliseconds(2500)) {
+            serial.send("BC1 HELLO\n");
+            hello_sent = true;
+        }
         if (_kbhit()) {
             const int key = _getch();
             if (key == 'q' || key == 'Q') break;
@@ -139,6 +147,12 @@ int run_serial(const std::string& port, UdpTarget* udp,
                 continue;
             }
             if (event.type == brasscue::EventType::Ready) {
+                const auto now = Clock::now();
+                // A startup READY and a near-simultaneous HELLO reply describe
+                // the same session. Still resynchronize on a later real reset.
+                if (ready && now - last_ready < std::chrono::milliseconds(1000))
+                    continue;
+                last_ready = now;
                 ready = true;
                 serial.send(brasscue::serialize_state(state));
                 std::cout << "Arduino ready: sent initial RGBW/master state.\n";
