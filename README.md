@@ -2,7 +2,7 @@
 
 **Open-source steampunk RGBW lighting controller** — classic Arduino Uno hardware, a desktop Bridge and future MIDI/OSC output options.
 
-> Early prototype. The desktop simulator builds without an Arduino; serial firmware and a hardware-ready product do not exist yet.
+> Early prototype. The console Bridge supports a tested BC1 USB serial handshake with an Arduino Uno; the graphical simulator is software-only and the complete hardware controller is not ready yet.
 
 ## Hardware plan
 
@@ -16,7 +16,7 @@ See [hardware selection](docs/HARDWARE.md) and [architecture](docs/ARCHITECTURE.
 
 ## First software milestone: PC simulator
 
-The C++17 console simulator emulates RGBW controls and an 8-bit grandmaster. Its initial network adapter creates Art-Net ArtDmx output using DMX slots 1–4 (RGBW) of Port-Address 0. Only local simulated input is supported so far.
+The C++17 console simulator emulates RGBW controls and an 8-bit grandmaster. Its initial network adapter creates Art-Net ArtDmx output using DMX slots 1–4 (RGBW) of Port-Address 0. The headless Bridge also supports BC1 serial input from the Uno via `--port COM3` on Windows.
 
 ```sh
 cmake -S . -B build -DBUILD_TESTING=ON
@@ -46,11 +46,17 @@ brasscue-bridge --simulate --target 127.0.0.1 --universe 0
 
 No Art-Net discovery or broadcast is performed. This is **not** a production lighting controller: continuous refresh, disconnect/failsafe behavior, channel configuration, Arduino firmware and the serial protocol are pending.
 
+## Windows graphical simulator (wxWidgets)
+
+An optional dark-themed desktop simulator is available as `brasscue-gui`, featuring RGBW controls, fine adjustments, grandmaster, numerical output, color preview, three virtual buttons and explicit opt-in Art-Net transmission.
+
+Build it using the **existing classic vcpkg wxWidgets** installation with `-DBRASSCUE_BUILD_GUI=ON`. It is not part of the default headless build. See [GUI build guide](docs/GUI.md) and [BC1 serial protocol](docs/SERIAL_PROTOCOL.md).
+
 ## Layout
 
 ```text
 AGENTS.md              Development instructions for Codex/agents
-bridge/                Portable C++ console simulator and tests
+bridge/                Portable C++ core, console Bridge, wxWidgets GUI and tests
 firmware/              Arduino implementation (planned)
 docs/                  Hardware selection and software architecture
 .github/workflows/     Windows/Linux Bridge checks
