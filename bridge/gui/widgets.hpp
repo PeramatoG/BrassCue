@@ -1,41 +1,47 @@
-// BrassCue - GPL-3.0. Front-panel controls; no output transport policy.
+// BrassCue - GPL-3.0. Native presentation widgets; Core owns all live values.
 #pragma once
-#include "../src/bridge_core.hpp"
-#include "../src/controller_profile.hpp"
+#include "presentation/encoder_gesture.hpp"
+#include "presentation/view_snapshot.hpp"
 #include <functional>
 #include <wx/wx.h>
 class EncoderKnob final : public wxPanel {
   public:
-    EncoderKnob(wxWindow *parent, std::function<void(int)> changed);
-    void SetValue(int value) {
-        if(value_==value)return;
-        value_ = value;
-        Refresh();
-    }
+    EncoderKnob(wxWindow *, std::function<void(int)> delta);
+    void SetValue(int value);
+    void Release();
+    void CheckPointer();
 
   private:
-    void Change(int delta);
+    std::pair<double, double> Point(const wxMouseEvent &) const;
     int value_ = 0;
+    brasscue::EncoderGesture gesture_;
     std::function<void(int)> changed_;
 };
 class ColorPreview final : public wxPanel {
   public:
-    explicit ColorPreview(wxWindow *parent);
-    void SetState(const brasscue::State &state, const brasscue::ControlProfile &profile);
+    explicit ColorPreview(wxWindow *);
+    void SetView(const brasscue::ScreenViewData &);
 
   private:
-    brasscue::State state_;
-    brasscue::ControlProfile profile_;
+    brasscue::ScreenViewData view_;
 };
 class CueButton final : public wxButton {
   public:
-    CueButton(wxWindow *parent, std::function<void(bool)> event);
+    CueButton(wxWindow *, std::function<void(bool)>);
     void Release(bool release_capture = true);
     void CheckPointer();
+    void SetView(const brasscue::ButtonView &);
+    bool Selected() const {
+        return view_.selected;
+    }
+    unsigned VisualRevision() const {
+        return revision_;
+    }
 
   private:
     void Press();
-    bool down_ = false;
-    bool pointer_down_ = false;
+    bool down_ = false, pointer_down_ = false;
+    brasscue::ButtonView view_;
+    unsigned revision_ = 0;
     std::function<void(bool)> event_;
 };

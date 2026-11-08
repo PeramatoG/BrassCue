@@ -14,6 +14,11 @@ else()
 endif()
 option(BRASSCUE_BUILD_GUI "Build the wxWidgets simulation application" ${BRASSCUE_GUI_DEFAULT})
 
+option(BRASSCUE_ENABLE_WEB_PANEL "Enable the optional local wxWebView presentation" OFF)
+if(BRASSCUE_ENABLE_WEB_PANEL AND NOT BRASSCUE_BUILD_GUI)
+  message(FATAL_ERROR "BRASSCUE_ENABLE_WEB_PANEL requires BRASSCUE_BUILD_GUI=ON")
+endif()
+
 include(CTest)
 add_subdirectory(bridge)
 

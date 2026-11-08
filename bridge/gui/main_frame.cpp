@@ -1,114 +1,106 @@
-// BrassCue - GPL-3.0. Front-panel composition and application coordination.
+// BrassCue - GPL-3.0. Application coordination only: input, profile workflow, renderer and output.
 #include "../src/controller_session.hpp"
 #include "../src/four_digit_display.hpp"
 #include "../src/output_session.hpp"
+#include "dark_theme.hpp"
+#include "network_panel.hpp"
+#include "panel_host.hpp"
 #include "profile_editor.hpp"
 #include "profile_files.hpp"
-#include "widgets.hpp"
 #include <chrono>
-#include <wx/slider.h>
 namespace {
-enum ControlId {
-    EncoderBase = wxID_HIGHEST + 100,
-    FaderId = EncoderBase + 4,
-    CueBase = FaderId + 1,
-    PreviewId = CueBase + 3
-};
 std::uint64_t Now() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
                std::chrono::steady_clock::now().time_since_epoch())
         .count();
 }
-wxStaticText *Label(wxWindow *p, const wxString &text) {
-    auto *l = new wxStaticText(p, wxID_ANY, text);
-    l->SetForegroundColour(wxColour(238, 232, 219));
-    return l;
-}
 class MainFrame final : public wxFrame {
   public:
     MainFrame()
-        : wxFrame(nullptr, wxID_ANY, "BrassCue", wxDefaultPosition, wxSize(850, 800)),
+        : wxFrame(nullptr, wxID_ANY, "BrassCue", wxDefaultPosition, wxSize(900, 900)),
           timer_(this) {
-        SetMinClientSize(FromDIP(wxSize(760, 680)));
+        SetMinClientSize(FromDIP(wxSize(780, 760)));
         SetBackgroundColour(wxColour(22, 24, 29));
         auto *root = new wxBoxSizer(wxVERTICAL);
-        status_ = Label(this, "SIMULATION | Art-Net OFF");
-        root->Add(status_, 0, wxALL, 12);
-        auto *front = new wxBoxSizer(wxHORIZONTAL);
-        // The physical front has three columns: fader/display, encoders, TFT/buttons.
-        auto *left = new wxBoxSizer(wxVERTICAL);
-        masterLabel_ = Label(this, "");
-        left->Add(masterLabel_, 0, wxALL, 8);
-        fader_ = new wxSlider(this, wxID_ANY, 255, 0, 255, wxDefaultPosition,
-                              FromDIP(wxSize(80, 360)), wxSL_VERTICAL | wxSL_INVERSE);
-        fader_->SetId(FaderId);
-        left->Add(fader_, 1, wxALIGN_CENTER_HORIZONTAL | wxALL, 8);
-        digits_ = Label(this, " 100");
-        digits_->SetForegroundColour(wxColour(255, 184, 36));
-        digits_->SetFont(wxFont(26, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD));
-        left->Add(digits_, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 12);
-        BindEdit(fader_, 4);
-        BindEdit(masterLabel_, 4);
-        BindEdit(digits_, 4);
-        fader_->Bind(wxEVT_SLIDER, [this](wxCommandEvent &e) {
-            session_.fader(e.GetInt(),Now());
-            RefreshState();
+        status_ = new wxStaticText(this, wxID_ANY, "");
+        status_->SetForegroundColour(wxColour(238, 232, 219));
+        root->Add(status_, 0, wxALL, 10);
+        panel_ = new PanelHost(this, Actions(), [this] {
+            if (!closing_)
+                RefreshView();
         });
-        front->Add(left, 1, wxEXPAND | wxALL, 8);
-        auto *middle = new wxBoxSizer(wxVERTICAL);
-        for (int i = 0; i < 4; ++i) {
-            auto *row = new wxBoxSizer(wxVERTICAL);
-            encoderLabels_[i] = Label(this, "");
-            row->Add(encoderLabels_[i], 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 4);
-            knobs_[i] = new EncoderKnob(this, [this, i](int v) {
-                session_.encoder(i, v,Now());
-                display_.encoder_changed(i, v, Now());
-                RefreshState();
-            });
-            knobs_[i]->SetId(EncoderBase + i);
-            row->Add(knobs_[i], 1, wxEXPAND);
-            BindEdit(knobs_[i], i);
-            BindEdit(encoderLabels_[i], i);
-            middle->Add(row, 1, wxEXPAND | wxALL, 4);
-        }
-        front->Add(middle, 1, wxEXPAND | wxALL, 8);
-        auto *right = new wxBoxSizer(wxVERTICAL);
-        preview_ = new ColorPreview(this);
-        preview_->SetId(PreviewId);
-        BindEdit(preview_, 8);
-        right->Add(preview_, 2, wxEXPAND | wxBOTTOM, 12);
-        for (int i = 0; i < 3; ++i) {
-            buttons_[i] = new CueButton(this, [this, i](bool down) {
-                session_.button(i, down, Now());
-                RefreshState();
-            });
-            buttons_[i]->SetId(CueBase + i);
-            right->Add(buttons_[i], 1, wxEXPAND | wxTOP | wxBOTTOM, 8);
-            BindEdit(buttons_[i], i + 5);
-        }
-        front->Add(right, 1, wxEXPAND | wxALL, 16);
-        root->Add(front, 1, wxEXPAND);
-        auto *network = new wxBoxSizer(wxHORIZONTAL);
-        network->Add(Label(this, "Art-Net IPv4"), 0, wxALIGN_CENTER_VERTICAL | wxALL, 6);
-        ip_ = new wxTextCtrl(this, wxID_ANY, "127.0.0.1");
-        network->Add(ip_, 1, wxALL, 6);
-        broadcast_ = new wxCheckBox(this, wxID_ANY, "Broadcast opt-in");
-        broadcast_->SetForegroundColour(*wxWHITE);
-        network->Add(broadcast_, 0, wxALIGN_CENTER_VERTICAL | wxALL, 6);
-        enabled_ = new wxCheckBox(this, wxID_ANY, "Output ON");
-        enabled_->SetForegroundColour(*wxWHITE);
-        network->Add(enabled_, 0, wxALIGN_CENTER_VERTICAL | wxALL, 6);
-        enabled_->Bind(wxEVT_CHECKBOX, [this](wxCommandEvent &) { Network(); });
-        root->Add(network, 0, wxEXPAND | wxALL, 8);
-        ip_->Bind(wxEVT_TEXT, [this](wxCommandEvent &) { NetworkEdited(); });
-        broadcast_->Bind(wxEVT_CHECKBOX, [this](wxCommandEvent &) { NetworkEdited(); });
-        auto *menu = new wxMenu;
-        menu->Append(wxID_OPEN, "Open / import...\tCtrl+O");
-        menu->Append(wxID_SAVE, "Save\tCtrl+S");
-        menu->Append(wxID_SAVEAS, "Save as / export...\tCtrl+Shift+S");
-        menu->Append(wxID_NEW, "Restore defaults");
+        root->Add(panel_, 1, wxEXPAND);
+        network_ = new NetworkPanel(
+            this, [this] { NetworkEdited(); }, [this](bool enabled) { EnableOutput(enabled); });
+        root->Add(network_, 0, wxEXPAND | wxALL, 8);
+        Menus();
+        SetSizer(root);
+        ApplyDarkTitle(*this);
+        Bind(wxEVT_TIMER, [this](wxTimerEvent &) {
+            if (closing_)
+                return;
+            panel_->CheckPointer();
+            session_.advance(Now());
+            Send();
+            RefreshView();
+        });
+        timer_.Start(40);
+        Bind(wxEVT_ACTIVATE, [this](wxActivateEvent &e) {
+            if (!e.GetActive() && panel_)
+                panel_->ReleaseInputs();
+            e.Skip();
+        });
+        Bind(wxEVT_CLOSE_WINDOW, [this](wxCloseEvent &e) {
+            if (e.CanVeto() && !files_.Discard(this)) {
+                e.Veto();
+                return;
+            }
+            closing_ = true;
+            timer_.Stop();
+            panel_->ReleaseInputs();
+            Stop();
+            e.Skip();
+        });
+        ApplyProfile(true);
+        Centre();
+    }
+
+  private:
+    brasscue::ControllerActions Actions() {
+        brasscue::ControllerActions actions;
+        actions.encoder_delta = [this](std::size_t i, int delta) {
+            session_.encoder_delta(i, delta, Now());
+            display_.encoder_changed(i, session_.state().rgbw.at(i), Now());
+            RefreshView();
+        };
+        actions.fader = [this](std::uint8_t value) {
+            session_.fader(value, Now());
+            RefreshView();
+        };
+        actions.button = [this](std::size_t i, bool down) {
+            session_.button(i, down, Now());
+            RefreshView();
+        };
+        actions.edit = [this](int element) { Edit(element); };
+        actions.release = [this] { session_.release_all(Now()); };
+        return actions;
+    }
+    void Menus() {
+        auto *profile = new wxMenu;
+        profile->Append(wxID_OPEN, "Open / import...\tCtrl+O");
+        profile->Append(wxID_SAVE, "Save\tCtrl+S");
+        profile->Append(wxID_SAVEAS, "Save as / export...\tCtrl+Shift+S");
+        profile->Append(wxID_NEW, "Restore defaults");
         auto *bar = new wxMenuBar;
-        bar->Append(menu, "&Profile");
+        bar->Append(profile, "&Profile");
+#if BRASSCUE_ENABLE_WEB_PANEL
+        auto *view = new wxMenu;
+        const int native = wxID_HIGHEST + 500;
+        view->AppendCheckItem(native, "Prefer native controls");
+        bar->Append(view, "&View");
+        Bind(
+            wxEVT_MENU, [this](wxCommandEvent &e) { panel_->PreferNative(e.IsChecked()); }, native);
+#endif
         SetMenuBar(bar);
         Bind(
             wxEVT_MENU,
@@ -117,25 +109,13 @@ class MainFrame final : public wxFrame {
                 if (files_.Open(this, p)) {
                     Stop();
                     session_ = brasscue::ControllerSession{};
-                    session_.configure(p);
-                    ApplyProfile();
+                    session_.configure(std::move(p));
+                    ApplyProfile(true);
                 }
             },
             wxID_OPEN);
-        Bind(
-            wxEVT_MENU,
-            [this](wxCommandEvent &) {
-                Save(false);
-                RefreshState();
-            },
-            wxID_SAVE);
-        Bind(
-            wxEVT_MENU,
-            [this](wxCommandEvent &) {
-                Save(true);
-                RefreshState();
-            },
-            wxID_SAVEAS);
+        Bind(wxEVT_MENU, [this](wxCommandEvent &) { Save(false); }, wxID_SAVE);
+        Bind(wxEVT_MENU, [this](wxCommandEvent &) { Save(true); }, wxID_SAVEAS);
         Bind(
             wxEVT_MENU,
             [this](wxCommandEvent &) {
@@ -143,157 +123,110 @@ class MainFrame final : public wxFrame {
                     Stop();
                     session_ = brasscue::ControllerSession{};
                     files_.Changed();
-                    ApplyProfile();
+                    ApplyProfile(true);
                 }
             },
             wxID_NEW);
-        Bind(wxEVT_CLOSE_WINDOW, [this](wxCloseEvent &e) {
-            if (e.CanVeto() && !files_.Discard(this)) {
-                e.Veto();
-                return;
-            }
-            Stop();
-            e.Skip();
-        });
-        Bind(wxEVT_ACTIVATE, [this](wxActivateEvent &e) {
-            if (!e.GetActive())
-                for (auto *b : buttons_)
-                    b->Release();
-            e.Skip();
-        });
-        Bind(wxEVT_TIMER, [this](wxTimerEvent &) {
-            for (auto *button : buttons_)
-                button->CheckPointer();
-            session_.advance(Now());
-            RefreshState();
-            Send();
-        });
-        timer_.Start(40);
-        SetSizer(root);
-        ApplyProfile();
-        Centre();
     }
-
-  private:
     void Edit(int element) {
         auto p = session_.profile();
         if (EditProfileElement(this, p, element)) {
             session_.configure(std::move(p));
             files_.Changed();
-            ApplyProfile();
+            ApplyProfile(false);
         }
-    }
-    void BindEdit(wxWindow *w, int element) {
-        w->Bind(wxEVT_RIGHT_UP, [this, element](wxMouseEvent &) { Edit(element); });
-        w->Bind(wxEVT_CONTEXT_MENU, [this, element](wxContextMenuEvent &e) {
-            if (e.GetPosition() == wxDefaultPosition)
-                Edit(element);
-        });
-    }
-    void ApplyProfile() {
-        const auto &p = session_.profile();
-        ip_->ChangeValue(wxString::FromUTF8(p.target_ip));
-        broadcast_->SetValue(p.allow_broadcast);
-        masterLabel_->SetLabel(wxString::FromUTF8(p.fader_label));
-        fader_->SetValue(session_.state().master);
-        for (int i = 0; i < 4; ++i)
-            knobs_[i]->SetValue(session_.state().rgbw[i]);
-        RefreshState();
-        Layout();
-    }
-    void RefreshState() {
-        const auto &p = session_.profile();
-        const auto &s = session_.state();
-        if(fader_->GetValue()!=s.master)fader_->SetValue(s.master);
-        for(int i=0;i<4;++i)knobs_[i]->SetValue(s.rgbw[i]);
-        for (int i = 0; i < 4; ++i)
-            encoderLabels_[i]->SetLabel(
-                wxString::FromUTF8(p.encoder_labels[i]) +
-                wxString::Format("  %u%%", brasscue::to_percent(s.rgbw[i])));
-        for (int i = 0; i < 3; ++i)
-            buttons_[i]->SetLabel(wxString::FromUTF8(p.button_labels[i]) + "\n" +
-                                  wxString::FromUTF8(session_.button_status(i, Now())));
-        display_.set_master(p.fader.grandmaster ? s.master : 255);
-        digits_->SetLabel(wxString::FromUTF8(display_.text(Now())));
-        preview_->SetState(s, p);
-        SetTitle(wxString::FromUTF8(p.name) + (files_.dirty() ? " *" : "") + " | BrassCue");
     }
     void Save(bool save_as) {
         try {
-            session_.network(ip_->GetValue().ToStdString(), broadcast_->GetValue());
+            network_->WritePreferences(session_);
             files_.Save(this, session_.profile(), save_as);
         } catch (const std::exception &e) {
             wxMessageBox(wxString::FromUTF8(e.what()), "Invalid profile", wxOK | wxICON_ERROR,
                          this);
         }
+        RefreshView();
+    }
+    void ApplyProfile(bool load_network) {
+        if (load_network) {
+            Stop();
+            network_->Load(session_.profile());
+        }
+        RefreshView();
+        Layout();
+    }
+    void RefreshView() {
+        const auto now = Now();
+        session_.advance(now);
+        display_.set_master(session_.state().master);
+        const auto connection = std::string("SIMULATION | Art-Net ") +
+                                (output_.enabled()       ? "ON"
+                                 : output_error_.empty() ? "OFF"
+                                                         : "ERROR") +
+                                " | " + panel_->Mode();
+        if (status_->GetLabel() != wxString::FromUTF8(connection))
+            status_->SetLabel(wxString::FromUTF8(connection));
+        panel_->Apply(brasscue::make_snapshot(session_, display_, now, connection));
+        const auto title = wxString::FromUTF8(session_.profile().name) +
+                           (files_.dirty() ? " *" : "") + " | BrassCue";
+        if (GetTitle() != title)
+            SetTitle(title);
     }
     void NetworkEdited() {
         Stop();
         files_.Changed();
-        auto p = session_.profile();
-        p.target_ip = ip_->GetValue().ToStdString();
-        p.allow_broadcast = broadcast_->GetValue();
         try {
-            session_.network(p.target_ip, p.allow_broadcast);
-            files_.Changed();
-        } catch (const std::exception &) {
-            status_->SetLabel("SIMULATION | Invalid network draft; correct before saving");
+            network_->WritePreferences(session_);
+        } catch (const std::exception &) { /* Keep incomplete network drafts local until valid. */
         }
+        RefreshView();
     }
-    void Network() {
+    void EnableOutput(bool enabled) {
         try {
-            if (enabled_->GetValue())
-                output_.enable(ip_->GetValue().ToStdString(), broadcast_->GetValue());
-            else
-                output_.stop();
-            status_->SetLabel(enabled_->GetValue() ? "SIMULATION | Art-Net ON"
-                                                   : "SIMULATION | Art-Net OFF");
-            Send();
+            if (enabled) {
+                network_->WritePreferences(session_);
+                output_.enable(network_->Resolve());
+                output_error_.clear();
+            } else
+                Stop();
+            network_->SetOutput(output_.enabled());
         } catch (const std::exception &e) {
-            Error(e);
+            OutputError(e);
         }
+        RefreshView();
     }
     void Stop() {
         try {
             output_.stop();
         } catch (const std::exception &e) {
-            Error(e);
+            output_error_ = e.what();
         }
-        enabled_->SetValue(false);
-        status_->SetLabel("SIMULATION | Art-Net OFF");
+        if (network_)
+            network_->SetOutput(false);
     }
     void Send() {
         try {
             output_.send(session_.engine(), Now());
         } catch (const std::exception &e) {
-            Error(e);
+            OutputError(e);
         }
     }
-    void Error(const std::exception &e) {
-        enabled_->SetValue(false);
-        try {
-            output_.stop();
-        } catch (...) {
-        }
-        status_->SetLabel("SIMULATION | Art-Net ERROR");
-        wxMessageBox(wxString::FromUTF8(e.what()), "Art-Net", wxOK | wxICON_ERROR, this);
+    void OutputError(const std::exception &e) {
+        Stop();
+        output_error_ = e.what();
+        if (!closing_)
+            wxMessageBox(wxString::FromUTF8(output_error_), "Art-Net stopped", wxOK | wxICON_ERROR,
+                         this);
     }
     brasscue::ControllerSession session_;
     brasscue::FourDigitDisplay display_;
     brasscue::OutputSession output_;
     ProfileFiles files_;
     wxTimer timer_;
+    PanelHost *panel_ = nullptr;
+    NetworkPanel *network_ = nullptr;
     wxStaticText *status_ = nullptr;
-    wxStaticText *masterLabel_ = nullptr;
-    wxStaticText *digits_ = nullptr;
-    std::array<wxStaticText *, 4> encoderLabels_{};
-    std::array<EncoderKnob *, 4> knobs_{};
-    std::array<CueButton *, 3> buttons_{};
-    wxSlider *fader_ = nullptr;
-    ColorPreview *preview_ = nullptr;
-    wxTextCtrl *ip_ = nullptr;
-    wxCheckBox *broadcast_ = nullptr;
-    wxCheckBox *enabled_ = nullptr;
+    bool closing_ = false;
+    std::string output_error_;
 };
 } // namespace
 wxFrame *CreateBrassCueFrame() {

@@ -1,4 +1,5 @@
 // BrassCue - GPL-3.0. Exercise real modal edit/commit/cancel, not a model substitute.
+#include "../gui/assignment_table.hpp"
 #include "../gui/profile_editor.hpp"
 #include "../gui/widgets.hpp"
 #include "../src/profile_io.hpp"
@@ -30,10 +31,8 @@ class EditorTestApp final : public wxApp {
                 CHECK(label);
                 label->SetValue(wxString::FromUTF8("Rojo ámbar"));
                 if (accept) {
-                    wxGrid *grid = nullptr;
-                    for (auto *child : dialog->GetChildren())
-                        if (auto *table = wxDynamicCast(child, wxGrid))
-                            grid = table;
+                    auto *grid = wxDynamicCast(
+                        wxWindow::FindWindowById(AssignmentTable::GridId, dialog), wxGrid);
                     CHECK(grid && grid->GetNumberRows() == 2);
                     grid->SetGridCursor(1, 0);
                     auto *remove = wxWindow::FindWindowByLabel("Remove selected", dialog);
@@ -41,11 +40,8 @@ class EditorTestApp final : public wxApp {
                     wxCommandEvent erase(wxEVT_BUTTON, remove->GetId());
                     remove->GetEventHandler()->ProcessEvent(erase);
                     CHECK(grid->GetNumberRows() == 1);
-                    wxChoice *units = nullptr;
-                    for (auto *child : dialog->GetChildren())
-                        if (auto *choice = wxDynamicCast(child, wxChoice))
-                            if (choice->IsEnabled())
-                                units = choice;
+                    auto *units = wxDynamicCast(
+                        wxWindow::FindWindowById(AssignmentTable::UnitsId, dialog), wxChoice);
                     CHECK(units && units->GetSelection() == 1);
                     for (int selection : {0, 1}) {
                         units->SetSelection(selection);
@@ -65,9 +61,50 @@ class EditorTestApp final : public wxApp {
         CHECK(EditProfileElement(nullptr, profile, 0));
         CHECK(profile.encoder_labels[0] == "Rojo ámbar");
         CHECK(profile.encoders[0][0].value == 53);
+        const auto before_button = brasscue::serialize_profile(profile);
+        CallAfter([] {
+            wxDialog *dialog = nullptr;
+            for (auto *window : wxTopLevelWindows)
+                if (auto *d = wxDynamicCast(window, wxDialog))
+                    dialog = d;
+            CHECK(dialog);
+            auto *grid =
+                wxDynamicCast(wxWindow::FindWindowById(AssignmentTable::GridId, dialog), wxGrid);
+            CHECK(grid && grid->GetNumberRows() == 1 && grid->GetCellValue(0, 0) == "Grandmaster");
+            auto *add = wxWindow::FindWindowById(AssignmentTable::AddRgbwId, dialog);
+            CHECK(add);
+            wxCommandEvent click(wxEVT_BUTTON, add->GetId());
+            add->GetEventHandler()->ProcessEvent(click);
+            CHECK(grid->GetNumberRows() == 5);
+            dialog->EndModal(wxID_CANCEL);
+        });
+        CHECK(!EditProfileElement(nullptr, profile, 6));
+        CHECK(brasscue::serialize_profile(profile) == before_button);
+        CallAfter([] {
+            wxDialog *dialog = nullptr;
+            for (auto *window : wxTopLevelWindows)
+                if (auto *d = wxDynamicCast(window, wxDialog))
+                    dialog = d;
+            CHECK(dialog);
+            auto *add = wxWindow::FindWindowById(AssignmentTable::AddRgbwId, dialog);
+            CHECK(add);
+            wxCommandEvent click(wxEVT_BUTTON, add->GetId());
+            add->GetEventHandler()->ProcessEvent(click);
+            wxCommandEvent ok(wxEVT_BUTTON, wxID_OK);
+            dialog->GetEventHandler()->ProcessEvent(ok);
+        });
+        CHECK(EditProfileElement(nullptr, profile, 6));
+        CHECK(profile.buttons[1].controls.size() == 5);
+        CHECK(profile.buttons[1].controls[0].value == 128);
         auto *frame = new wxFrame(nullptr, wxID_ANY, "Cue input test");
         std::vector<bool> edges;
         auto *button = new CueButton(frame, [&](bool down) { edges.push_back(down); });
+        button->SetView({"SALA 0", "ON", true});
+        const auto revision = button->VisualRevision();
+        for (int i = 0; i < 100; ++i)
+            button->SetView({"SALA 0", "ON", true});
+        CHECK(button->VisualRevision() == revision && button->GetLabel() == "SALA 0" &&
+              button->Selected());
         for (int i = 0; i < 2; ++i) {
             wxKeyEvent down(wxEVT_KEY_DOWN);
             down.m_keyCode = WXK_SPACE;
