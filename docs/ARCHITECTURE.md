@@ -65,7 +65,7 @@ rounded percentage cannot represent the original byte exactly.
 Toggle alternates on each distinct down edge; up only rearms it. Pressing the
 active room button again turns it off. Flash follows down/up, including release
 outside the widget, lost capture, keyboard release and lost focus. Repeated down
-edges have no effect. Activating a Kill cue fades out the other two buttons;
+edges have no effect. The GUI reconciles mouse-origin holds against physical pointer state every 40 ms as a lost-release backstop, without canceling keyboard holds. Activating a Kill cue fades out the other two buttons;
 encoders and fader are unaffected. Kill off allows HTP coexistence. The three
 buttons constitute one explicit fixed room group in this hardware layout.
 

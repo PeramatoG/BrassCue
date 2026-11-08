@@ -45,7 +45,7 @@ Changing unit presentation does not rewrite untouched DMX targets.
 
 Toggle buttons persist across release; pressing the active one again turns it
 off. Flash buttons release on mouse up outside, lost capture, key up or lost
-focus. Labels show OFF, ON, FADE IN or FADE OUT. Kill affects only the three room
+focus. A 40 ms pointer-state check releases a mouse hold even if a native backend consumes mouse-up; idle mouse state does not cancel keyboard holds. Labels show OFF, ON, FADE IN or FADE OUT. Kill affects only the three room
 buttons. See [Architecture](ARCHITECTURE.md) for HTP crossfade behavior.
 TFT Color displays an approximate additive RGBW mix; Levels draws actual level
 bars. The four-character display temporarily shows an encoder for two seconds,

@@ -61,6 +61,7 @@ class EditorTestApp final : public wxApp {
             down.SetEventObject(button);
             button->GetEventHandler()->ProcessEvent(down);
         }
+        button->CheckPointer(); // An idle pointer must not cancel a keyboard hold.
         CHECK(edges.size() == 1 && edges[0]);
         wxFocusEvent lost(wxEVT_KILL_FOCUS, button->GetId());
         lost.SetEventObject(button);

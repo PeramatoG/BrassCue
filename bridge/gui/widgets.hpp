@@ -29,10 +29,12 @@ class ColorPreview final : public wxPanel {
 class CueButton final : public wxButton {
   public:
     CueButton(wxWindow *parent, std::function<void(bool)> event);
-    void Release();
+    void Release(bool release_capture = true);
+    void CheckPointer();
 
   private:
     void Press();
     bool down_ = false;
+    bool pointer_down_ = false;
     std::function<void(bool)> event_;
 };

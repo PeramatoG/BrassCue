@@ -162,6 +162,8 @@ class MainFrame final : public wxFrame {
             e.Skip();
         });
         Bind(wxEVT_TIMER, [this](wxTimerEvent &) {
+            for (auto *button : buttons_)
+                button->CheckPointer();
             RefreshState();
             Send();
         });

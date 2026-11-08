@@ -93,7 +93,9 @@ CueButton::CueButton(wxWindow *parent, std::function<void(bool)> event)
     SetForegroundColour(wxColour(238, 232, 219));
     Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) {
         SetFocus();
-        CaptureMouse();
+        if (!HasCapture())
+            CaptureMouse();
+        pointer_down_ = true;
         Press();
     });
     Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
@@ -101,7 +103,7 @@ CueButton::CueButton(wxWindow *parent, std::function<void(bool)> event)
         if (HasCapture())
             ReleaseMouse();
     });
-    Bind(wxEVT_MOUSE_CAPTURE_LOST, [this](wxMouseCaptureLostEvent &) { Release(); });
+    Bind(wxEVT_MOUSE_CAPTURE_LOST, [this](wxMouseCaptureLostEvent &) { Release(false); });
     Bind(wxEVT_KILL_FOCUS, [this](wxFocusEvent &e) {
         Release();
         e.Skip();
@@ -131,9 +133,18 @@ void CueButton::Press() {
         event_(true);
     }
 }
-void CueButton::Release() {
+void CueButton::CheckPointer() {
+    // Some native backends consume mouse-up while a pointer grab is active.
+    // Poll only mouse-origin holds; keyboard Flash must survive an idle mouse.
+    if (pointer_down_ && !wxGetMouseState().LeftIsDown())
+        Release();
+}
+void CueButton::Release(bool release_capture) {
+    pointer_down_ = false;
     if (down_) {
         down_ = false;
         event_(false);
     }
+    if (release_capture && HasCapture())
+        ReleaseMouse();
 }
