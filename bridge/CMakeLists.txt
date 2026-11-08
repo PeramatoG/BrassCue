@@ -75,7 +75,7 @@ if(BUILD_TESTING)
 endif()
 
 if(BRASSCUE_BUILD_GUI AND BUILD_TESTING)
-  add_executable(brasscue-gui-editor-test WIN32 tests/gui_editor_test.cpp gui/profile_editor.cpp)
+  add_executable(brasscue-gui-editor-test WIN32 tests/gui_editor_test.cpp gui/profile_editor.cpp gui/widgets.cpp)
   target_compile_features(brasscue-gui-editor-test PRIVATE cxx_std_17)
   target_compile_definitions(brasscue-gui-editor-test PRIVATE NOMINMAX)
   target_link_libraries(brasscue-gui-editor-test PRIVATE brasscue-profile)

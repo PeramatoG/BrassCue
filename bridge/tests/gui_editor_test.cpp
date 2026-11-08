@@ -1,7 +1,9 @@
 // BrassCue - GPL-3.0. Exercise real modal edit/commit/cancel, not a model substitute.
 #include "../gui/profile_editor.hpp"
+#include "../gui/widgets.hpp"
 #include "../src/profile_io.hpp"
 #include "check.hpp"
+#include <vector>
 #include <wx/choice.h>
 #include <wx/textctrl.h>
 class EditorTestApp final : public wxApp {
@@ -50,6 +52,30 @@ class EditorTestApp final : public wxApp {
         CHECK(EditProfileElement(nullptr, profile, 0));
         CHECK(profile.encoder_labels[0] == "Rojo ámbar");
         CHECK(profile.encoders[0][0].value == 53);
+        auto *frame = new wxFrame(nullptr, wxID_ANY, "Cue input test");
+        std::vector<bool> edges;
+        auto *button = new CueButton(frame, [&](bool down) { edges.push_back(down); });
+        for (int i = 0; i < 2; ++i) {
+            wxKeyEvent down(wxEVT_KEY_DOWN);
+            down.m_keyCode = WXK_SPACE;
+            down.SetEventObject(button);
+            button->GetEventHandler()->ProcessEvent(down);
+        }
+        CHECK(edges.size() == 1 && edges[0]);
+        wxFocusEvent lost(wxEVT_KILL_FOCUS, button->GetId());
+        lost.SetEventObject(button);
+        button->GetEventHandler()->ProcessEvent(lost);
+        CHECK(edges.size() == 2 && !edges[1]);
+        wxKeyEvent up(wxEVT_KEY_UP);
+        up.m_keyCode = WXK_SPACE;
+        up.SetEventObject(button);
+        button->GetEventHandler()->ProcessEvent(up);
+        CHECK(edges.size() == 2);
+        wxCommandEvent accessible(wxEVT_BUTTON, button->GetId());
+        accessible.SetEventObject(button);
+        button->GetEventHandler()->ProcessEvent(accessible);
+        CHECK(edges.size() == 4 && edges[2] && !edges[3]);
+        frame->Destroy();
         std::cout << "Real modal editor commit/cancel and UTF-8 labels passed\n";
         std::exit(0);
     }
