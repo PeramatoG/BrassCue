@@ -171,8 +171,7 @@ class ElementDialog final : public wxDialog {
     }
     void Commit() {
         using namespace brasscue;
-        const auto text = label_->GetValue().ToUTF8();
-        const std::string label = text.data();
+        const std::string label = label_->GetValue().ToStdString(wxConvUTF8);
         if (element_ < 4) {
             Read();
             profile_.encoder_labels[element_] = label;

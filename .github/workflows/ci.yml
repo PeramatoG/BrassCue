@@ -56,4 +56,4 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y libwxgtk3.2-dev xvfb
       - run: cmake -S . -B build -DBRASSCUE_BUILD_GUI=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug
       - run: cmake --build build --parallel 4
-      - run: ctest --test-dir build --output-on-failure --no-tests=error
+      - run: xvfb-run -a ctest --test-dir build --output-on-failure --no-tests=error

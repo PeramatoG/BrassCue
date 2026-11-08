@@ -26,7 +26,7 @@ For Ninja omit `-A x64` and specify `-DCMAKE_BUILD_TYPE=Debug` (or Release)
 in separate directories. Windows defaults GUI ON; Linux defaults OFF.
 Linux GUI uses system wxWidgets 3.2 (`libwxgtk3.2-dev`) with
 `cmake -S . -B build-gui -DBRASSCUE_BUILD_GUI=ON -DCMAKE_BUILD_TYPE=Debug`.
-Python 3 is required for test integration. No manifest migration is needed.
+GUI configurations run nine CTest tests, including a real modal-editor commit/cancel test. Headless configurations run eight. On Linux run GUI CTest under a display (for example `xvfb-run -a ctest --test-dir build-gui --output-on-failure`). Python 3 is required for test integration. No manifest migration is needed.
 
 CI includes Windows GUI builds with classic vcpkg and tests in Debug/Release,
 Linux GUI compilation, and four Windows/Linux headless configurations. An added
