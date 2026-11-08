@@ -1,6 +1,7 @@
 #pragma once
 // Hardware-independent, multi-universe cue and control engine.
 #include "bridge_core.hpp"
+#include "value_conversion.hpp"
 #include <array>
 #include <algorithm>
 #include <cmath>
@@ -37,11 +38,6 @@ struct FaderConfig {
 inline bool valid_address(Address a) {
     return a.universe >= 1 && a.universe <= 32768 && a.channel >= 1 && a.channel <= 512;
 }
-inline std::uint8_t from_percent(unsigned pct) {
-    if (pct > 100) throw std::out_of_range("Percent must be 0..100");
-    return static_cast<std::uint8_t>((pct * 255u + 50u) / 100u);
-}
-inline unsigned to_percent(std::uint8_t v) { return (unsigned(v) * 100u + 127u) / 255u; }
 inline void validate(const std::vector<Assignment>& entries) {
     std::map<Address, bool> used;
     for (const auto& e : entries) {
