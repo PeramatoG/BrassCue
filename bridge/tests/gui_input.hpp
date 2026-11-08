@@ -80,6 +80,11 @@ class GuiInput {
         input.type = INPUT_KEYBOARD;
         input.ki.wVk = key;
         input.ki.dwFlags = up ? KEYEVENTF_KEYUP : 0;
+        // Dedicated navigation keys are extended; without this flag wx receives
+        // WXK_NUMPAD_END/HOME/etc. instead of the key being tested.
+        if (key == VK_UP || key == VK_DOWN || key == VK_LEFT || key == VK_RIGHT || key == VK_HOME ||
+            key == VK_END || key == VK_PRIOR || key == VK_NEXT)
+            input.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
         return SendInput(1, &input, sizeof(input)) == 1;
     }
     static bool Mouse(DWORD flags) {
