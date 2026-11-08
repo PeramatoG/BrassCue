@@ -160,7 +160,7 @@ CueButton::CueButton(wxWindow *parent, std::function<void(bool)> event)
     SetBackgroundColour(wxColour(43, 48, 56));
     SetForegroundColour(wxColour(238, 232, 219));
 #if defined(__WXMSW__) && wxUSE_ACCESSIBILITY
-    new CueAccessible(this);
+    SetAccessible(new CueAccessible(this));
 #endif
     Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) {
         SetFocus();

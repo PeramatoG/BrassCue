@@ -1,6 +1,7 @@
 // BrassCue - GPL-3.0. Local browser presentation; all controller rules remain in C++.
 #include "presentation/web_protocol.hpp"
 #include "web_panel_api.hpp"
+#include "web_script.hpp"
 #include <wx/filename.h>
 #include <wx/filesys.h>
 #include <wx/stdpaths.h>
@@ -49,10 +50,11 @@ class WebPanel final : public wxPanel, public WebPanelInterface {
             if (event.GetURL() != url_ || failed_state_)
                 return;
             begin_id_ = ++script_serial_;
-            browser_->RunScriptAsync(
-                "window.brasscuePanel.begin(" +
-                    wxString::FromUTF8(brasscue::json_string(std::to_string(epoch_))) + ");",
-                reinterpret_cast<void *>(begin_id_));
+            RunPanelScript(*browser_,
+                           "window.brasscuePanel.begin(" +
+                               wxString::FromUTF8(brasscue::json_string(std::to_string(epoch_))) +
+                               ");",
+                           reinterpret_cast<void *>(begin_id_));
         });
         browser_->Bind(wxEVT_WEBVIEW_SCRIPT_MESSAGE_RECEIVED, [this](wxWebViewEvent &event) {
             if (failed_state_ || event.GetURL() != url_)
@@ -74,7 +76,7 @@ class WebPanel final : public wxPanel, public WebPanelInterface {
             if (!id || (id != begin_id_ && id != snapshot_id_))
                 return;
             if (event.IsError()) {
-                Fail("Local panel script failed; using native controls");
+                Fail("Local panel script failed: " + event.GetString().ToStdString(wxConvUTF8));
                 return;
             }
             if (id != snapshot_id_ || !busy_)
@@ -120,8 +122,8 @@ class WebPanel final : public wxPanel, public WebPanelInterface {
         busy_ = true;
         snapshot_id_ = ++script_serial_;
         deadline_.StartOnce(10000);
-        browser_->RunScriptAsync("window.brasscuePanel.apply(" + wxString::FromUTF8(json) + ");",
-                                 reinterpret_cast<void *>(snapshot_id_));
+        RunPanelScript(*browser_, "window.brasscuePanel.apply(" + wxString::FromUTF8(json) + ");",
+                       reinterpret_cast<void *>(snapshot_id_));
     }
     void Fail(const std::string &reason) {
         if (failed_state_)

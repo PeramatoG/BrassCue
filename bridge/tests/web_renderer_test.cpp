@@ -1,5 +1,6 @@
 // BrassCue - GPL-3.0. Exercise the actual embedded renderer and real Core, not a mock engine.
 #include "../gui/web_panel_api.hpp"
+#include "../gui/web_script.hpp"
 #include "../src/controller_session.hpp"
 #include "../src/four_digit_display.hpp"
 #include "check.hpp"
@@ -42,7 +43,7 @@ class RendererTestApp final : public wxApp {
             }
             CHECK(!event.IsError());
             const auto result = event.GetString();
-            if (result == "ok") {
+            if (result == "ok" || result == "\"ok\"") {
                 if (phase_ == 1) {
                     CHECK(session_.state().master == 128);
                     phase_ = 2;
@@ -58,7 +59,7 @@ class RendererTestApp final : public wxApp {
                                  "reload and navigation guard passed\n";
                     std::exit(0);
                 }
-            } else if (result != "wait") {
+            } else if (result != "wait" && result != "\"wait\"") {
                 std::cerr << "Unexpected DOM result: " << result << '\n';
                 std::exit(1);
             }
@@ -81,7 +82,7 @@ class RendererTestApp final : public wxApp {
     }
     void Query(const wxString &expression) {
         pending_ = true;
-        browser_->RunScriptAsync(expression, this);
+        RunPanelScript(*browser_, "(() => { return (" + expression + "); })()", this);
     }
     void Tick() {
         CHECK(++ticks_ < 200);
@@ -94,7 +95,7 @@ class RendererTestApp final : public wxApp {
             auto profile = session_.profile();
             profile.button_labels[1] = "SALA <50> ámbar";
             session_.configure(profile);
-            browser_->RunScriptAsync("document.getElementById('cue-1').click();");
+            RunPanelScript(*browser_, "document.getElementById('cue-1').click();");
             phase_ = 1;
         } else if (phase_ == 1) {
             Query("document.getElementById('fader').value==='128' && "
@@ -108,7 +109,7 @@ class RendererTestApp final : public wxApp {
             Query("document.getElementById('fader').value==='128' ? 'ok' : 'wait'");
         } else if (phase_ == 4) {
             CHECK(browser_->GetCurrentURL().StartsWith("file:"));
-            browser_->RunScriptAsync("document.getElementById('cue-2').click();");
+            RunPanelScript(*browser_, "document.getElementById('cue-2').click();");
             phase_ = 5;
         } else if (phase_ == 5) {
             Query("document.getElementById('fader').value==='0' && "

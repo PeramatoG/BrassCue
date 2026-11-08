@@ -98,5 +98,5 @@ void PanelHost::CheckPointer() {
 std::string PanelHost::Mode() const {
     return web_active_           ? "Web panel"
            : diagnostic_.empty() ? "Native controls"
-                                 : "Native controls — web renderer unavailable";
+                                 : "Native controls — " + diagnostic_;
 }
