@@ -47,8 +47,9 @@ Load validates a candidate before replacement. Save writes a sibling `.tmp`,
 closes it, then atomically replaces the destination with rename/MoveFileEx. An
 existing `.tmp` is an error; a failed load leaves the profile intact. Editors own
 local drafts, including inactive action tables; Cancel has no session effect.
-Accepting a configuration edit preserves effective controls and resets button
-ownership/transitions. GUI open/reset starts RGBW zero, GM 255, output OFF.
+Accepting a configuration edit preserves controls and resets button
+ownership/transitions. Changing fader role is explicit: GM to patch initializes
+logical GM to 255; patch to GM adopts the patch fader position. GUI open/reset starts RGBW zero, GM 255, output OFF.
 Console `load` preserves current controls and its explicit `--target`; profile
 network preferences cannot redirect it.
 

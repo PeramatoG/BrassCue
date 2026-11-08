@@ -84,6 +84,10 @@ class WebPanel final : public wxPanel, public WebPanelInterface {
             }
             if (id != snapshot_id_ || !busy_)
                 return;
+            if (event.GetString() != "true") {
+                Fail("Local panel rejected a view update; using native controls");
+                return;
+            }
             deadline_.Stop();
             sent_ = inflight_;
             inflight_.reset();

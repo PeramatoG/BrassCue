@@ -97,7 +97,8 @@ presets never become HTP contributions. Duplicate down edges do nothing.
 Mouse up outside, lost capture/focus, keyboard release and renderer handoff
 release Flash. Pointer reconciliation affects mouse holds, preserving keyboard
 holds. Configuration commits reset ownership, preserving control values; GUI
-open/reset starts RGBW zero, GM 255, output OFF.
+open/reset starts RGBW zero, GM 255, output OFF. Changing GM to patch initializes
+logical GM to 255; patch to GM adopts the patch position.
 
 BC1 physical fader observations are separate from the effective GM; buttons do
 not move a nonmotorized physical fader. Current device input takes over on its
