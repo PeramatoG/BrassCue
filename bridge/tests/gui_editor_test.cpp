@@ -5,12 +5,14 @@
 #include "check.hpp"
 #include <vector>
 #include <wx/choice.h>
+#include <wx/grid.h>
 #include <wx/textctrl.h>
 class EditorTestApp final : public wxApp {
   public:
     bool OnInit() override {
         brasscue::ControlProfile profile;
         profile.encoders[0][0].value = 53;
+        profile.encoders[0].push_back({{2, 2}, 100});
         const auto original = brasscue::serialize_profile(profile);
         auto act = [this](bool accept) {
             CallAfter([accept] {
@@ -28,6 +30,17 @@ class EditorTestApp final : public wxApp {
                 CHECK(label);
                 label->SetValue(wxString::FromUTF8("Rojo ámbar"));
                 if (accept) {
+                    wxGrid *grid = nullptr;
+                    for (auto *child : dialog->GetChildren())
+                        if (auto *table = wxDynamicCast(child, wxGrid))
+                            grid = table;
+                    CHECK(grid && grid->GetNumberRows() == 2);
+                    grid->SetGridCursor(1, 0);
+                    auto *remove = wxWindow::FindWindowByLabel("Remove selected", dialog);
+                    CHECK(remove);
+                    wxCommandEvent erase(wxEVT_BUTTON, remove->GetId());
+                    remove->GetEventHandler()->ProcessEvent(erase);
+                    CHECK(grid->GetNumberRows() == 1);
                     wxChoice *units = nullptr;
                     for (auto *child : dialog->GetChildren())
                         if (auto *choice = wxDynamicCast(child, wxChoice))

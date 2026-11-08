@@ -1,6 +1,7 @@
 // BrassCue - GPL-3.0. One modal transaction with a multi-universe assignment table.
 #include "profile_editor.hpp"
 #include "../src/assignment_editor.hpp"
+#include <algorithm>
 #include <vector>
 #include <wx/choice.h>
 #include <wx/grid.h>
@@ -104,13 +105,18 @@ class ElementDialog final : public wxDialog {
                 }
             });
             remove->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) {
-                int row = grid_->GetGridCursorRow();
+                grid_->SaveEditControlValue();
+                grid_->HideCellEditControl();
+                const int row = grid_->GetGridCursorRow();
                 if (row >= 0 && row < grid_->GetNumberRows()) {
                     grid_->DeleteRows(row);
                     entries_.erase(entries_.begin() + row);
-                    dirty_rows_.clear();
-                    for (int i = 0; i < grid_->GetNumberRows(); ++i)
-                        dirty_rows_.push_back(i);
+                    // Removing a neighbor changes indices, never target precision.
+                    dirty_rows_.erase(std::remove(dirty_rows_.begin(), dirty_rows_.end(), row),
+                                      dirty_rows_.end());
+                    for (auto &edited : dirty_rows_)
+                        if (edited > row)
+                            --edited;
                 }
             });
             box->Add(row, 0, wxALL, 8);
