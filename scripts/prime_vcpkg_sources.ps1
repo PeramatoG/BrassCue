@@ -9,6 +9,7 @@ foreach ($port in $ports) {
     if (!(Test-Path $portfile)) { continue }
     $content = Get-Content $portfile -Raw
     if ($content -notmatch 'vcpkg_from_github\s*\(' -or $content -match 'FILE_DISAMBIGUATOR') { continue }
+    $content = [regex]::Match($content, '(?s)vcpkg_from_github\s*\(.*?\n\)').Value
     $repoMatch = [regex]::Match($content, '\bREPO\s+"?([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)')
     $refMatch = [regex]::Match($content, '\bREF\s+("[^"]+"|[^\s)]+)')
     $hashMatch = [regex]::Match($content, '\bSHA512\s+([A-Fa-f0-9]{128})')
