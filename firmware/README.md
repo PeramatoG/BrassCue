@@ -1,11 +1,11 @@
 # BrassCue Uno diagnostic firmware
 
-The first sketch is an input-scanning **diagnostic prototype**, not the final firmware or the Bridge serial transport.
+The sketch scans inputs and implements the **BC1 prototype** protocol. Physical displays are not driven.
 
 - Open `BrassCueFirmware/BrassCueFirmware.ino` in Arduino IDE.
 - Select **Arduino Uno** (classic ATmega328P), and upload.
 - Open Serial Monitor at **115200 baud**.
-- Input lines after attaching **verified test wiring** are `ENC 0 +1` or `ENC 0 -1`, `BTN 0 DOWN` / `UP`, and `GM 0..255`. Encoder numbering 0–3 corresponds to R/G/B/W. Actual UART output uses `1` rather than `+1` for positive steps.
+- Input lines after attaching **verified test wiring** are `BC1 ENC 0 1` or `BC1 ENC 0 -1`, `BC1 BTN 0 1` / `BC1 BTN 0 0`, and `BC1 GM 0..255`. Encoder numbering 0–3 corresponds to R/G/B/W. Actual UART output uses `1` rather than `+1` for positive steps.
 
 **Do not connect the TFT or TM1637 to this pin budget until real board labels, supply and reset requirements have been verified.** The sketch does not use them yet.
 

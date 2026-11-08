@@ -1,0 +1,29 @@
+/* BrassCue - GPL-3.0. Modest hardware-inspired presentation; no animation loop. */
+:root { color-scheme:dark; font:14px system-ui,sans-serif; color:#eee8db; background:#16181d; }
+* { box-sizing:border-box; }
+body { margin:0; padding:14px; }
+main { display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:24px; min-height:570px; height:calc(100vh - 65px); }
+h2 { font-size:14px; font-weight:500; margin:5px 0; }
+.fader-column,.right-column,#encoders { display:flex; flex-direction:column; align-items:center; gap:10px; min-width:0; }
+.fader-rail { flex:1; min-height:260px; width:90px; display:flex; justify-content:center; background:repeating-linear-gradient(to top,transparent 0 25px,#595449 26px,transparent 27px) center / 65px 90% no-repeat; }
+#fader { writing-mode:vertical-lr; direction:rtl; appearance:none; -webkit-appearance:none; height:100%; width:48px; background:transparent; cursor:ns-resize; }
+#fader::-webkit-slider-runnable-track { width:6px; height:100%; background:#101115; border:1px solid #49443b; border-radius:3px; }
+#fader::-webkit-slider-thumb { appearance:none; -webkit-appearance:none; width:48px; height:26px; margin-left:-22px; border:1px solid #b5aea0; border-radius:3px; background:linear-gradient(to bottom,#85888a,#45484a 45%,#dfb85f 47%,#dfb85f 53%,#35383b 55%,#777b7d); box-shadow:0 2px 4px #08090b; }
+#display { font:32px monospace; letter-spacing:3px; color:#ffb824; background:#101115; border:1px solid #494234; padding:10px; }
+#effective-master { color:#a9a69e; font-size:12px; }
+.encoder { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
+.knob { width:84px; height:84px; position:relative; border-radius:50%; border:2px solid #cda154; background:radial-gradient(circle at 35% 30%,#3d424b,#272b32); cursor:grab; touch-action:none; }
+.indicator { position:absolute; left:calc(50% - 1px); top:8px; height:25px; width:2px; background:#edc17a; transform-origin:50% 32px; }
+.knob:active { cursor:grabbing; }
+#screen { flex:1.2; width:100%; border:1px solid #69604c; padding:10px; min-height:185px; display:flex; flex-direction:column; }
+#color { flex:1; min-height:135px; border:1px solid #cda154; }
+#levels { flex:1; }
+.level { display:flex; gap:6px; align-items:center; margin:10px 0; }
+.level span { width:65px; overflow:hidden; }
+.level progress { flex:1; width:40px; accent-color:#cda154; }
+#buttons { flex:1; width:100%; display:flex; flex-direction:column; gap:16px; }
+.cue { flex:1; min-height:66px; background:#2b3038; color:#eee8db; border:2px solid #55534c; border-radius:5px; font:inherit; }
+.cue[aria-pressed="true"] { background:#4e3c20; border-color:#dba94f; color:#ffc45d; }
+.cue.transitioning { box-shadow:inset 0 0 0 1px #95743f; }
+:focus-visible { outline:2px solid #ffc45d; outline-offset:3px; }
+#connection { margin:8px 0 0; color:#b5b1a7; font-size:11px; }

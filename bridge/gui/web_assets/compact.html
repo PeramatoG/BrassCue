@@ -1,0 +1,14 @@
+<!doctype html>
+<!-- BrassCue - GPL-3.0. Packaged presentation only. -->
+<html lang="en"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>BrassCue controls</title>
+<link rel="stylesheet" href="compact.css"><script defer src="compact.js"></script></head>
+<body><main aria-label="BrassCue controller">
+<section class="fader-column" data-edit="4"><h2 id="fader-label">Grandmaster</h2><output id="fader-percent"></output>
+<div class="fader-rail"><input id="fader" aria-label="Grandmaster" type="range" min="0" max="255" value="255" orient="vertical"></div>
+<output id="display" aria-label="Four digit display"></output><span id="effective-master"></span></section>
+<section id="encoders" aria-label="Color encoders"></section>
+<section class="right-column"><section id="screen" data-edit="8" aria-label="TFT preview"><h2 id="screen-title"></h2><div id="color"></div><div id="levels"></div></section>
+<div id="buttons" aria-label="Preset buttons"></div></section>
+</main><p id="connection" role="status"></p></body></html>

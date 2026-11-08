@@ -9,7 +9,7 @@ This sheet records the **final shopping selection**, not the earlier DigiKey alt
 | Grandmaster | **Bourns PTB0143-2010BPB103** (RS 737-7792) | 1 | Linear 10 kΩ, single-gang, 100 mm travel, approx. 128 × 16 mm body |
 | Independent buttons | **Omron B3F-1070** (RS 686-6907; sold as pack of five) | 3 used | 6 × 6 mm tactile, SPST normally open, 9.5 mm tall, 0.25 mm travel |
 | TFT | **GMT144 ST7735 1.44-inch 128×128** (Electronperdido SKU 0263L) | 1 | SPI, PCB approx. 45 × 30 mm; vendor states 3.3/5 V supply with **matching signal levels** |
-| Yellow hexadecimal indicator | **TM1637 0.36-inch, 4-digit yellow** (Electronperdido SKU 0589L, yellow selection) | 1 | 2 data pins (CLK/DIO), separate power/GND, display two hexadecimal digits on four-digit module |
+| Yellow four-digit indicator | **TM1637 0.36-inch, 4-digit yellow** (Electronperdido SKU 0589L, yellow selection) | 1 | 2 data pins (CLK/DIO), separate power/GND, four physical digits; percent/temporary encoder presentation planned |
 
 ## Manufacturer/vendor sources
 - Arduino Uno: https://docs.arduino.cc/hardware/uno-rev3
@@ -53,6 +53,12 @@ The proposed assignment consumes every available general-purpose pin except D0/D
 8. Prototype the modules one at a time. Avoid relying on this table as an assembly schematic until the RESET circuit, power draw, switch cap mechanics and physical header labels have been checked.
 
 ## Firmware strategy
-- Input scanning will use the pin budget above, but keep hardware constants centralized and easy to change.
-- The first sketch is **diagnostic only**. It emits short human-readable event messages via USB serial, not the versioned controller↔Bridge protocol.
-- The Bridge's terminal simulator remains independent; real USB serial transport is the next integration milestone.
+- Input scanning uses centralized provisional constants. The sketch emits BC1
+  ENC/BTN/GM records, stores host STATE and acknowledges it at 115200 baud.
+- Native tests exercise input decoding/filtering; they do not compile the sketch.
+- Windows CLI is the COM adapter. GUI remains a simulator. TFT and TM1637 drivers,
+  segment glyph approximations, reset circuit, signal levels and power budget
+  require physical verification. Do not infer hardware readiness from GUI output.
+- The software Compact preset mirrors a roughly 168 × 192 mm front: vertical
+  100 mm fader and display left, four encoders center, TFT and three buttons right.
+  SALA patch 1.5 is editable profile data, never a fixed electrical property.

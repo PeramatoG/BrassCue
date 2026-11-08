@@ -72,3 +72,6 @@ Testing/
 
 # Visual Studio CMake out-of-source build output (default for Open Folder)
 /out/
+
+# Machine-specific CMake presets
+CMakeUserPresets.json

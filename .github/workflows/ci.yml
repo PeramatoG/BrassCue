@@ -1,10 +1,9 @@
 name: Bridge CI
-
 on:
   push:
     branches: [main]
   pull_request:
-
+  workflow_dispatch:
 jobs:
   bridge:
     runs-on: ${{ matrix.os }}
@@ -12,11 +11,110 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
+        config: [Debug, Release]
     steps:
       - uses: actions/checkout@v4
+      - run: python tests/check_source_file_size.py
       - name: Configure
-        run: cmake -S . -B build -DBUILD_TESTING=ON
-      - name: Build
-        run: cmake --build build --config Release
-      - name: Tests
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: cmake -S . -B build -DBUILD_TESTING=ON -DBRASSCUE_BUILD_GUI=OFF -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+      - run: cmake --build build --config ${{ matrix.config }} --parallel 4
+      - run: ctest --test-dir build -C ${{ matrix.config }} --output-on-failure --no-tests=error
+  windows-gui:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      VCPKG_MAX_CONCURRENCY: "4"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect runner classic vcpkg
+        id: vcpkg
+        shell: pwsh
+        run: |
+          $root = $env:VCPKG_INSTALLATION_ROOT
+          if (!(Test-Path "$root/vcpkg.exe")) { throw "Runner-provided vcpkg is missing" }
+          "root=$root" >> $env:GITHUB_OUTPUT
+          "revision=$(git -C $root rev-parse HEAD)" >> $env:GITHUB_OUTPUT
+          & "$root/vcpkg.exe" version
+      - uses: actions/cache/restore@v4
+        id: wx-cache
+        with:
+          path: |
+            ${{ steps.vcpkg.outputs.root }}/installed
+            ${{ steps.vcpkg.outputs.root }}/downloads
+          key: windows-wxwidgets-classic-${{ steps.vcpkg.outputs.revision }}-v1
+      - name: Prime checksum-verified official source cache
+        shell: pwsh
+        run: ./scripts/prime_vcpkg_sources.ps1 -VcpkgRoot $env:VCPKG_INSTALLATION_ROOT
+      - name: Classic vcpkg wxWidgets
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install wxwidgets:x64-windows --classic
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Save verified wxWidgets dependencies
+        if: steps.wx-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ steps.vcpkg.outputs.root }}/installed
+            ${{ steps.vcpkg.outputs.root }}/downloads
+          key: windows-wxwidgets-classic-${{ steps.vcpkg.outputs.revision }}-v1
+      - name: Configure GUI
+        shell: pwsh
+        run: cmake -S . -B out/gui -A x64 "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_TARGET_TRIPLET=x64-windows -DBRASSCUE_BUILD_GUI=ON -DBUILD_TESTING=ON
+      - run: cmake --build out/gui --config Debug --parallel 4
+      - run: ctest --test-dir out/gui -C Debug --output-on-failure --no-tests=error
+      - run: cmake --build out/gui --config Release --parallel 4
+      - run: ctest --test-dir out/gui -C Release --output-on-failure --no-tests=error
+  linux-gui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libwxgtk3.2-dev xvfb
+      - run: cmake -S . -B build -DBRASSCUE_BUILD_GUI=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug
+      - run: cmake --build build --parallel 4
+      - run: xvfb-run -a ctest --test-dir build --output-on-failure --no-tests=error
+
+  windows-webview:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      VCPKG_MAX_CONCURRENCY: "4"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect coherent runner vcpkg
+        id: vcpkg
+        shell: pwsh
+        run: |
+          $root = $env:VCPKG_INSTALLATION_ROOT
+          "root=$root" >> $env:GITHUB_OUTPUT
+          "revision=$(git -C $root rev-parse HEAD)" >> $env:GITHUB_OUTPUT
+          & "$root/vcpkg.exe" version
+      - uses: actions/cache/restore@v4
+        id: web-cache
+        with:
+          path: |
+            ${{ steps.vcpkg.outputs.root }}/installed
+            ${{ steps.vcpkg.outputs.root }}/downloads
+          key: windows-wxwidgets-webview-${{ steps.vcpkg.outputs.revision }}-v1
+      - name: Prime checksum-verified official source cache
+        shell: pwsh
+        run: ./scripts/prime_vcpkg_sources.ps1 -VcpkgRoot $env:VCPKG_INSTALLATION_ROOT
+      - name: Install classic wxWidgets webview feature
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install 'wxwidgets[webview]:x64-windows' --classic --recurse
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/cache/save@v4
+        if: steps.web-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ${{ steps.vcpkg.outputs.root }}/installed
+            ${{ steps.vcpkg.outputs.root }}/downloads
+          key: windows-wxwidgets-webview-${{ steps.vcpkg.outputs.revision }}-v1
+      - name: Configure optional Edge panel
+        shell: pwsh
+        run: cmake -S . -B out/web -A x64 "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_TARGET_TRIPLET=x64-windows -DBRASSCUE_BUILD_GUI=ON -DBRASSCUE_ENABLE_WEB_PANEL=ON -DBUILD_TESTING=ON
+      - run: cmake --build out/web --config Debug --parallel 4
+      - run: ctest --test-dir out/web -C Debug --output-on-failure --no-tests=error
+      - run: cmake --build out/web --config Release --parallel 4
+      - run: ctest --test-dir out/web -C Release --output-on-failure --no-tests=error

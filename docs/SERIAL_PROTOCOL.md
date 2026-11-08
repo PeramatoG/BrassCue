@@ -25,7 +25,7 @@ The Bridge sends its state when READY is received, and after accepted changes. T
 
 ## Windows testing
 
-1. Pull latest `main` **after the PR is merged** and build the CMake project in Visual Studio.
+1. Check out `feature/windows-graphical-simulator` for PR #6 validation and build the CMake project in Visual Studio.
 2. Open `firmware/BrassCueFirmware/BrassCueFirmware.ino` with Arduino IDE; upload it to **Arduino Uno**.
 3. **Close Arduino IDE Serial Monitor** (COM ports are exclusive).
 4. Run the Windows Bridge executable from your build folder:
@@ -34,7 +34,7 @@ The Bridge sends its state when READY is received, and after accepted changes. T
 brasscue-bridge.exe --port COM3 --ignore-gm
 ```
 
-You should see `Arduino ready: sent initial RGBW/master state.` and `Arduino acknowledged state.`. The Arduino resets when the Bridge opens its COM port; the Bridge waits two seconds and issues HELLO.
+You should see `Arduino ready: sent initial RGBW/master state.` and `Arduino acknowledged state.`. The Arduino resets when the Bridge opens its COM port; the Bridge sends HELLO once after 2500 ms only if READY has not arrived. Duplicate READY within 1000 ms is ignored; later READY resynchronizes.
 
 `--ignore-gm` is for the current unplugged slider on A0: the input floats, and ignoring its changing readings prevents unwanted DMX updates. Remove this option once the real fader is connected.
 
@@ -44,9 +44,9 @@ To output Art-Net to a test receiver, explicitly specify its IPv4 address (repla
 brasscue-bridge.exe --port COM3 --ignore-gm --target 127.0.0.1 --universe 0
 ```
 
-The output uses ArtDmx on UDP 6454, Port-Address 0, slots 1–4 = RGBW. Until encoders are attached, values remain at startup defaults: R/G/B/W=0 and master=255.
+The output uses ArtDmx on UDP 6454, Port-Address 0, slots 1–4 = RGBW. BC1 BTN edges drive the shared room cue engine on provisional slot 5. Until encoders are attached, values remain at startup defaults: R/G/B/W=0 and master=255.
 
-**Limitations**: The connection is not automatically reopened after unplugging; restart the Bridge. A lost serial connection terminates the Bridge with an error. Continuous Art-Net refresh, fail-safe output behavior, display drivers and button mappings are not implemented. This prototype is for isolated testing, not unattended stage operation.
+**Limitations**: The connection is not automatically reopened after unplugging; restart the Bridge. A lost serial connection terminates the Bridge with an error. Art-Net refreshes at about 25 Hz; normal exit attempts zero frames. Hard failure cannot guarantee cleanup. Physical display drivers are not implemented. This prototype is for isolated testing, not unattended stage operation.
 
 ## Manual tests before merge
 - Native `ctest` (including `brasscue-serial`) passes on Windows and Linux.
