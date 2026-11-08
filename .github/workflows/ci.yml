@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 jobs:
   bridge:
     runs-on: ${{ matrix.os }}
@@ -69,3 +70,38 @@ jobs:
       - run: cmake -S . -B build -DBRASSCUE_BUILD_GUI=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug
       - run: cmake --build build --parallel 4
       - run: xvfb-run -a ctest --test-dir build --output-on-failure --no-tests=error
+
+  windows-webview-dependencies:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      VCPKG_MAX_CONCURRENCY: "4"
+    steps:
+      - name: Inspect coherent runner vcpkg
+        id: vcpkg
+        shell: pwsh
+        run: |
+          $root = $env:VCPKG_INSTALLATION_ROOT
+          "root=$root" >> $env:GITHUB_OUTPUT
+          "revision=$(git -C $root rev-parse HEAD)" >> $env:GITHUB_OUTPUT
+          & "$root/vcpkg.exe" version
+      - uses: actions/cache/restore@v4
+        id: web-cache
+        with:
+          path: |
+            ${{ steps.vcpkg.outputs.root }}/installed
+            ${{ steps.vcpkg.outputs.root }}/downloads
+          key: windows-wxwidgets-webview-${{ steps.vcpkg.outputs.revision }}-v1
+      - name: Install classic wxWidgets webview feature
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install 'wxwidgets[webview]:x64-windows' --classic --recurse
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/cache/save@v4
+        if: steps.web-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ${{ steps.vcpkg.outputs.root }}/installed
+            ${{ steps.vcpkg.outputs.root }}/downloads
+          key: windows-wxwidgets-webview-${{ steps.vcpkg.outputs.revision }}-v1
