@@ -22,27 +22,29 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: microsoft/vcpkg
-          ref: '2025.06.13'
-          path: .ci-vcpkg
+      - name: Inspect runner classic vcpkg
+        id: vcpkg
+        shell: pwsh
+        run: |
+          $root = $env:VCPKG_INSTALLATION_ROOT
+          if (!(Test-Path "$root/vcpkg.exe")) { throw "Runner-provided vcpkg is missing" }
+          "root=$root" >> $env:GITHUB_OUTPUT
+          "revision=$(git -C $root rev-parse HEAD)" >> $env:GITHUB_OUTPUT
+          & "$root/vcpkg.exe" version
       - uses: actions/cache@v4
         with:
           path: |
-            .ci-vcpkg/installed
-            .ci-vcpkg/downloads
-          key: windows-wxwidgets-classic-2025.06.13-v1
+            ${{ steps.vcpkg.outputs.root }}/installed
+            ${{ steps.vcpkg.outputs.root }}/downloads
+          key: windows-wxwidgets-classic-${{ steps.vcpkg.outputs.revision }}-v1
       - name: Classic vcpkg wxWidgets
         shell: pwsh
         run: |
-          $tool = Join-Path $env:VCPKG_INSTALLATION_ROOT "vcpkg.exe"
-          if (!(Test-Path $tool)) { throw "Runner-provided vcpkg.exe is missing" }
-          & $tool version
-          & $tool install wxwidgets:x64-windows --classic --vcpkg-root="$PWD/.ci-vcpkg"
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install wxwidgets:x64-windows --classic
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Configure GUI
-        run: cmake -S . -B out/gui -A x64 -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/.ci-vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_TARGET_TRIPLET=x64-windows -DBRASSCUE_BUILD_GUI=ON -DBUILD_TESTING=ON
+        shell: pwsh
+        run: cmake -S . -B out/gui -A x64 "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_TARGET_TRIPLET=x64-windows -DBRASSCUE_BUILD_GUI=ON -DBUILD_TESTING=ON
       - run: cmake --build out/gui --config Debug --parallel 4
       - run: ctest --test-dir out/gui -C Debug --output-on-failure --no-tests=error
       - run: cmake --build out/gui --config Release --parallel 4
