@@ -1,7 +1,7 @@
 #pragma once
 // Hardware-independent, multi-universe cue and control engine.
 #include "bridge_core.hpp"
-#include "value_conversion.hpp"
+#include "patch.hpp"
 #include <array>
 #include <algorithm>
 #include <cmath>
@@ -11,40 +11,6 @@
 #include <vector>
 
 namespace brasscue {
-struct Address {
-    std::uint16_t universe = 1; // User-facing, 1-based Art-Net port address
-    std::uint16_t channel = 1;  // DMX 1..512
-    bool operator<(const Address& rhs) const {
-        return universe < rhs.universe || (universe == rhs.universe && channel < rhs.channel);
-    }
-};
-struct Assignment {
-    Address address;
-    std::uint8_t value = 255; // Always normalized to 0..255 internally
-};
-enum class ValueDisplay { Dmx255, Percent };
-enum class ButtonMode { Toggle, Flash };
-struct ButtonConfig {
-    std::vector<Assignment> assignments;
-    ButtonMode mode = ButtonMode::Toggle;
-    bool kill = true; // Mutually exclusive within the button group
-    unsigned fade_in_ms = 0;
-    unsigned fade_out_ms = 0;
-};
-struct FaderConfig {
-    bool grandmaster = true;
-    std::vector<Assignment> assignments;
-};
-inline bool valid_address(Address a) {
-    return a.universe >= 1 && a.universe <= 32768 && a.channel >= 1 && a.channel <= 512;
-}
-inline void validate(const std::vector<Assignment>& entries) {
-    std::map<Address, bool> used;
-    for (const auto& e : entries) {
-        if (!valid_address(e.address) || !used.emplace(e.address, true).second)
-            throw std::invalid_argument("Invalid or duplicate universe.channel assignment");
-    }
-}
 class CueEngine {
 public:
     explicit CueEngine(std::vector<ButtonConfig> buttons = std::vector<ButtonConfig>(3))
@@ -82,6 +48,14 @@ public:
             set_target(index, down ? 1.0 : 0.0, now_ms);
             if (down && config.kill) kill_others(index, now_ms);
         }
+    }
+    void release_all(std::uint64_t now) {
+        for (std::size_t i=0; i<buttons_.size(); ++i) button(i, false, now);
+    }
+    const char* button_status(std::size_t i, std::uint64_t now) const {
+        const auto& t = tracks_.at(i);
+        if (level_at(i, now) != t.target) return t.target > t.start ? "FADE IN" : "FADE OUT";
+        return t.target > 0 ? "ON" : "OFF";
     }
     std::map<std::uint16_t, std::array<std::uint8_t, 512>> render(std::uint64_t now_ms) const {
         std::map<std::uint16_t, std::array<std::uint8_t, 512>> frames;
@@ -129,7 +103,8 @@ private:
     };
     double level_at(std::size_t i, std::uint64_t now) const {
         const auto& t = tracks_[i];
-        if (!t.duration_ms || now <= t.start_ms) return now < t.start_ms ? t.start : t.target;
+        if (!t.duration_ms) return t.target;
+        if (now <= t.start_ms) return t.start;
         const double f = (std::min)(1.0, double(now - t.start_ms) / t.duration_ms);
         return t.start + (t.target - t.start) * f;
     }

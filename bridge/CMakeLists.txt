@@ -1,3 +1,5 @@
+add_library(brasscue-profile src/profile_io.cpp)
+target_compile_features(brasscue-profile PUBLIC cxx_std_17)
 add_executable(brasscue-bridge src/main.cpp)
 target_compile_features(brasscue-bridge PRIVATE cxx_std_17)
 
@@ -29,6 +31,7 @@ endif()
 if(BUILD_TESTING)
   add_executable(brasscue-profile-test tests/profile_test.cpp)
   target_compile_features(brasscue-profile-test PRIVATE cxx_std_17)
+  target_link_libraries(brasscue-profile-test PRIVATE brasscue-profile)
   add_test(NAME brasscue-profile COMMAND brasscue-profile-test)
 endif()
 
