@@ -1,6 +1,7 @@
 #pragma once
 
 #ifdef _WIN32
+#include "serial_session.hpp"
 #include <winsock2.h>
 #include <windows.h>
 #include <stdexcept>
@@ -64,21 +65,7 @@ public:
             if (!ReadFile(handle_, &c, 1, &n, nullptr))
                 throw std::runtime_error("Serial read failed; device disconnected?");
             if (n == 0) return false;
-            if (c == '\r') continue;
-            if (c == '\n') {
-                if (overflow_) { overflow_ = false; buffer_.clear(); continue; }
-                if (buffer_.empty()) continue;
-                output.swap(buffer_);
-                buffer_.clear();
-                return true;
-            }
-            if (overflow_) continue;
-            if (c < 32 || c > 126 || buffer_.size() >= 80) {
-                buffer_.clear();
-                overflow_ = true;
-                continue;
-            }
-            buffer_ += c;
+            if (line_.feed(c,output)) return true;
         }
         return false;
     }
@@ -90,8 +77,7 @@ private:
         throw std::runtime_error(std::string(action) + " failed on serial port");
     }
     HANDLE handle_ = INVALID_HANDLE_VALUE;
-    std::string buffer_;
-    bool overflow_ = false;
+    BoundedSerialLine line_;
 };
 
 } // namespace brasscue

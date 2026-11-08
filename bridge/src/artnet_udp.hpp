@@ -50,10 +50,10 @@ public:
 #ifdef _WIN32
             if (setsockopt(socket_, SOL_SOCKET, SO_BROADCAST,
                            reinterpret_cast<const char*>(&enabled), sizeof(enabled)) != 0)
-                throw std::runtime_error("Unable to enable UDP broadcast");
+                { close_socket(); throw std::runtime_error("Unable to enable UDP broadcast"); }
 #else
             if (setsockopt(socket_, SOL_SOCKET, SO_BROADCAST, &enabled, sizeof(enabled)) != 0)
-                throw std::runtime_error("Unable to enable UDP broadcast");
+                { close_socket(); throw std::runtime_error("Unable to enable UDP broadcast"); }
 #endif
         }
     }
@@ -61,7 +61,10 @@ public:
     UdpTarget(const UdpTarget&) = delete;
     UdpTarget& operator=(const UdpTarget&) = delete;
 
-    ~UdpTarget() {
+    ~UdpTarget() { close_socket(); }
+
+private:
+    void close_socket() {
 #ifdef _WIN32
         if (socket_ != INVALID_SOCKET) closesocket(socket_);
         WSACleanup();
@@ -70,6 +73,7 @@ public:
 #endif
     }
 
+public:
     void send(const std::array<std::uint8_t, kPacketBytes>& packet) const {
 #ifdef _WIN32
         const auto count = ::sendto(socket_, reinterpret_cast<const char*>(packet.data()),

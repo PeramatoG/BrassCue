@@ -1,6 +1,8 @@
+find_package(Threads REQUIRED)
 add_library(brasscue-profile src/profile_io.cpp)
 target_compile_features(brasscue-profile PUBLIC cxx_std_17)
-add_executable(brasscue-bridge src/main.cpp)
+add_executable(brasscue-bridge src/main.cpp src/cli.cpp)
+target_link_libraries(brasscue-bridge PRIVATE brasscue-profile Threads::Threads)
 target_compile_features(brasscue-bridge PRIVATE cxx_std_17)
 
 if(WIN32)
