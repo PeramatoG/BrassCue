@@ -54,5 +54,26 @@ int main() {
     for (int i = 0; i < 300; ++i)
         s.event({EventType::Encoder, 0, -1}, false, 0);
     CHECK(s.state().rgbw[0] == 0);
+    // A fade handoff with Kill off must invalidate the old button in both renderers.
+    auto timed = s.profile();
+    timed.buttons[0].fade_in_ms = timed.buttons[1].fade_in_ms = 1000;
+    timed.buttons[0].kill = timed.buttons[1].kill = false;
+    s.configure(timed);
+    s.fader(0);
+    s.button(0, true, 0);
+    s.button(0, false, 0);
+    s.advance(400);
+    auto outgoing = make_snapshot(s, display, 400, "SIMULATION | OFF");
+    CHECK(outgoing.buttons[0].selected);
+    s.button(1, true, 400);
+    s.button(1, false, 400);
+    auto incoming = make_snapshot(s, display, 400, "SIMULATION | OFF");
+    CHECK(!incoming.buttons[0].selected && incoming.buttons[1].selected);
+    auto handoff = view_changes(&outgoing, incoming);
+    CHECK(handoff.buttons[0] && handoff.buttons[1]);
+    CHECK(snapshot_json(&outgoing, incoming).find("\"selected\":false") != std::string::npos);
+    s.advance(1400);
+    auto settled = make_snapshot(s, display, 1400, "SIMULATION | OFF");
+    CHECK(settled.fader == 128 && !settled.buttons[0].selected && settled.buttons[1].selected);
     CHECK(json_string("\"\\\n</script>") == "\"\\\"\\\\\\u000a\\u003c/script>\"");
 }

@@ -26,7 +26,9 @@ For Ninja omit `-A x64` and specify `-DCMAKE_BUILD_TYPE=Debug` (or Release)
 in separate directories. Windows defaults GUI ON; Linux defaults OFF.
 Linux GUI uses system wxWidgets 3.2 (`libwxgtk3.2-dev`) with
 `cmake -S . -B build-gui -DBRASSCUE_BUILD_GUI=ON -DCMAKE_BUILD_TYPE=Debug`.
-Native GUI configurations run fourteen CTest tests, including real modal editor/button presentation checks and OS keyboard/mouse interaction. Headless configurations run twelve. Web builds add an actual embedded-renderer integration test. On Linux run GUI CTest under a display (for example `xvfb-run -a ctest --test-dir build-gui --output-on-failure`). Python 3 is required for test integration. No manifest migration is needed.
+Native GUI configurations run fourteen CTest tests, including real modal editor/button presentation checks and OS keyboard/mouse interaction.
+OS interaction uses wx UI simulation where enabled, or Win32 SendInput on Windows
+vcpkg builds that disable it; other unsupported backends explicitly skip (77). Headless configurations run twelve. Web builds add an actual embedded-renderer integration test. On Linux run GUI CTest under a display (for example `xvfb-run -a ctest --test-dir build-gui --output-on-failure`). Python 3 is required for test integration. No manifest migration is needed.
 
 CI includes Windows GUI builds with classic vcpkg and tests in Debug/Release,
 Linux GUI compilation, and four Windows/Linux headless configurations. An added
@@ -103,7 +105,8 @@ Default HOUSE 100/50/0 are internal GM commands. Fader, display, TFT and DMX
 follow their effective levels/fades. Manual movement cancels the owning preset;
 matching 0/128/255 highlights without a synthetic press. Toggle-off targets zero;
 Flash returns to previous still-owned values. Kill off uses the latest command
-per logical target. Explicit DMX actions retain HTP behavior. Focus/capture loss
+per logical target. A superseded preset loses its highlight when it owns no
+remaining controls; presets still owning disjoint controls can remain highlighted. Explicit DMX actions retain HTP behavior. Focus/capture loss
 and renderer handoff release Flash. See [Architecture](ARCHITECTURE.md).
 TFT Color displays an approximate additive RGBW mix; Levels draws actual level
 bars. The four-character display temporarily shows an encoder for two seconds,

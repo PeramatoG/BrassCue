@@ -40,8 +40,8 @@ class FaderAccessible final : public wxWindowAccessible {
 ConsoleFader::ConsoleFader(wxWindow *parent, wxWindowID id, std::function<void(int)> changed)
     : wxControl(parent, id, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE),
       changed_(std::move(changed)) {
-    SetMinSize(FromDIP(wxSize(80, 160)));
     SetInitialSize(FromDIP(wxSize(80, 360)));
+    SetMinSize(FromDIP(wxSize(80, 160)));
     SetName("Grandmaster");
     SetHelpText("Vertical fader, 0 to 255. Arrows: one step; Page Up/Down: ten; Home/End: limits.");
     SetBackgroundStyle(wxBG_STYLE_PAINT);
@@ -67,7 +67,8 @@ ConsoleFader::ConsoleFader(wxWindow *parent, wxWindowID id, std::function<void(i
         SetFocus();
         grab_offset_ =
             Cap().Contains(e.GetPosition()) ? e.GetY() - (Cap().y + Cap().height / 2) : 0;
-        CaptureMouse();
+        if (!HasCapture())
+            CaptureMouse();
         MoveTo(e.GetY());
     });
     Bind(wxEVT_MOTION, [this](wxMouseEvent &e) {

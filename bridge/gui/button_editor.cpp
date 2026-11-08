@@ -3,6 +3,7 @@
 #include "assignment_table.hpp"
 #include "dark_theme.hpp"
 #include "editor_buttons.hpp"
+#include "fade_field.hpp"
 #include <cmath>
 #include <wx/spinctrl.h>
 namespace {
@@ -55,8 +56,14 @@ class ButtonDialog final : public wxDialog {
         out_->SetDigits(1);
         initial_out_ = out_->GetValue();
         for (auto *field : {in_, out_})
-            field->Bind(wxEVT_TEXT_ENTER,
-                        [field](wxCommandEvent &) { field->SetValue(field->GetValue()); });
+            field->Bind(wxEVT_TEXT_ENTER, [this, field](wxCommandEvent &) {
+                try {
+                    // On Windows GetValue() can still hold the pre-edit number until focus loss.
+                    field->SetValue(ReadFadeSeconds(*field));
+                } catch (const std::exception &e) {
+                    Error(e);
+                }
+            });
         timings->Add(out_);
         root->Add(timings, 0, wxALL, 6);
         table_ = new AssignmentTable(this, b.assignments, b.controls, p.units,
@@ -106,8 +113,9 @@ class ButtonDialog final : public wxDialog {
         b.kill = kill_->GetValue();
         // Keep legacy millisecond precision unless the displayed duration changes.
         const auto milliseconds = [](wxSpinCtrlDouble *control, unsigned original, double initial) {
-            const auto tenths = std::lround(control->GetValue() * 10.0);
-            return control->GetValue() == initial ? original : unsigned(tenths * 100);
+            const auto value = ReadFadeSeconds(*control);
+            const auto tenths = std::lround(value * 10.0);
+            return value == initial ? original : unsigned(tenths * 100);
         };
         b.fade_in_ms = milliseconds(in_, b.fade_in_ms, initial_in_);
         b.fade_out_ms = milliseconds(out_, b.fade_out_ms, initial_out_);

@@ -56,6 +56,11 @@ single-channel/FaderRole/ButtonAction profiles. BC1 STATE remains the historical
 five raw bytes; room cues are host-owned and do not extend the wire protocol.
 Core never includes wxWidgets or Arduino. CMake registers sources explicitly.
 
+Internal preset selection follows control ownership. With Kill off, taking the
+last control owned by an older preset clears its selection, including during a
+fade. Presets that still own disjoint targets can remain selected together;
+levels, fade timing and stale Flash release retain per-target ownership rules.
+
 ## Patch and merge
 
 Visible universe 1..32768 converts to wire Port-Address 0..32767 only in packet

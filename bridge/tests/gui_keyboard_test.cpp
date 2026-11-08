@@ -5,10 +5,10 @@
 #include "../src/controller_session.hpp"
 #include "../src/profile_io.hpp"
 #include "check.hpp"
+#include "gui_input.hpp"
 #include <cmath>
 #include <wx/spinctrl.h>
-#include <wx/uiaction.h>
-#if wxUSE_UIACTIONSIMULATOR
+#if BRASSCUE_GUI_INPUT_SUPPORTED
 namespace {
 void Pump() {
     for (int i = 0; i < 10; ++i) {
@@ -17,7 +17,7 @@ void Pump() {
     }
 }
 void Key(int code, int modifiers = wxMOD_NONE) {
-    wxUIActionSimulator input;
+    GuiInput input;
     CHECK(input.Char(code, modifiers));
     Pump();
 }
@@ -42,15 +42,15 @@ void StillOpen(wxDialog *dialog) {
 class KeyboardTestApp final : public wxApp {
   public:
     bool OnInit() override {
-#if wxUSE_UIACTIONSIMULATOR
+#if BRASSCUE_GUI_INPUT_SUPPORTED
         CallAfter([this] { Run(); });
         return true;
 #else
-        std::cerr << "SKIP: wxWidgets lacks UI action simulator support\n";
+        std::cerr << "SKIP: No supported OS input backend in this wxWidgets build\n";
         std::exit(77);
 #endif
     }
-#if wxUSE_UIACTIONSIMULATOR
+#if BRASSCUE_GUI_INPUT_SUPPORTED
     void Run() {
         // Every contextual editor, including the shared three button editors.
         for (int element = 0; element <= 8; ++element)
@@ -79,7 +79,7 @@ class KeyboardTestApp final : public wxApp {
                     CHECK(label);
                     Focus(label);
                     Key('A', wxMOD_CONTROL);
-                    wxUIActionSimulator input;
+                    GuiInput input;
                     CHECK(input.Text("Key"));
                     Key(WXK_RETURN);
                     StillOpen(dialog);
@@ -88,12 +88,17 @@ class KeyboardTestApp final : public wxApp {
                     Key(WXK_TAB);
                     StillOpen(dialog);
                     CHECK(!label->HasFocus());
+                    Key(WXK_TAB, wxMOD_SHIFT);
+                    CHECK(label->HasFocus());
+                    Key(WXK_TAB);
                     if (element >= 5 && element <= 7) {
-                        wxSpinCtrlDouble *fade = nullptr;
+                        wxSpinCtrlDouble *fade = nullptr, *out = nullptr;
                         for (auto *child : dialog->GetChildren())
                             if (auto *spin = wxDynamicCast(child, wxSpinCtrlDouble)) {
-                                fade = spin;
-                                break;
+                                if (!fade)
+                                    fade = spin;
+                                else
+                                    out = spin;
                             }
                         CHECK(fade);
                         Focus(fade);
@@ -103,6 +108,10 @@ class KeyboardTestApp final : public wxApp {
                         StillOpen(dialog);
                         CHECK(std::abs(fade->GetValue() - 2.3) < 0.001);
                         Key(WXK_TAB);
+                        StillOpen(dialog);
+                        CHECK(out);
+                        Focus(out);
+                        Key(WXK_RETURN); // Confirming the rounded field keeps legacy milliseconds.
                         StillOpen(dialog);
                     }
                     if (element != 8) {
@@ -175,7 +184,12 @@ class KeyboardTestApp final : public wxApp {
         const auto original = brasscue::serialize_profile(profile);
         CallAfter([] {
             auto *dialog = Dialog();
-            Focus(dialog->GetChildren().front());
+            wxTextCtrl *label = nullptr;
+            for (auto *child : dialog->GetChildren())
+                if (auto *text = wxDynamicCast(child, wxTextCtrl))
+                    label = text;
+            CHECK(label);
+            Focus(label);
             Key(WXK_ESCAPE);
         });
         CHECK(!EditProfileElement(nullptr, profile, 8));
@@ -218,7 +232,7 @@ class KeyboardTestApp final : public wxApp {
         fader->SetValue(session.fader_value());
         CHECK(fader->GetValue() == 128 && notifications == before);
         // Clicking and dragging the rail reaches both limits and midpoint.
-        wxUIActionSimulator mouse;
+        GuiInput mouse;
         const auto origin = fader->ClientToScreen(wxPoint(0, 0));
         const auto size = fader->GetClientSize();
         CHECK(mouse.MouseMove(origin.x + size.x / 2, origin.y + size.y - 1));
