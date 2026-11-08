@@ -156,13 +156,17 @@ class WebPanel final : public wxPanel, public WebPanelInterface {
 WebPanelInterface *CreateWebPanel(wxWindow *parent, brasscue::ControllerActions actions,
                                   std::function<void()> ready,
                                   std::function<void(const std::string &)> failed,
-                                  std::string &diagnostic) {
+                                  std::string &diagnostic, bool *backend_unavailable) {
+    if (backend_unavailable)
+        *backend_unavailable = false;
 #ifdef __WXMSW__
     const wxString backend = wxASCII_STR(wxWebViewBackendEdge);
 #else
     const wxString backend = wxASCII_STR(wxWebViewBackendWebKit);
 #endif
     if (!wxWebView::IsBackendAvailable(backend)) {
+        if (backend_unavailable)
+            *backend_unavailable = true;
         diagnostic = "Web renderer unavailable. On Windows install the Microsoft Edge WebView2 "
                      "Evergreen Runtime.";
         return nullptr;

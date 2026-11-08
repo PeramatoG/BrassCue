@@ -61,5 +61,6 @@ script timeout release held input and expose native controls with a diagnostic.
 “Prefer native controls” permits manual handoff. No renderer action enables a
 socket. A missing runtime is a distinct CTest skip (77), not a passed browser
 interaction. Actual renderer tests exercise DOM clicks against ControllerSession,
-GM/display/fader/selection synchronization, escaped labels, reload and navigation
-veto. Pure protocol tests exercise malformed/stale messages without a browser.
+GM/display/fader/selection synchronization, escaped labels, reload, navigation
+veto and release after an injected script failure. Missing assets fail the test;
+only an unavailable backend/runtime reports a skip. Pure protocol tests exercise malformed/stale messages without a browser.

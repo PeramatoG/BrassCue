@@ -14,4 +14,4 @@ class WebPanelInterface {
 WebPanelInterface *CreateWebPanel(wxWindow *, brasscue::ControllerActions,
                                   std::function<void()> ready,
                                   std::function<void(const std::string &)> failed,
-                                  std::string &diagnostic);
+                                  std::string &diagnostic, bool *backend_unavailable = nullptr);

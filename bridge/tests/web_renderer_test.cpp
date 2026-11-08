@@ -17,18 +17,28 @@ class RendererTestApp final : public wxApp {
         };
         actions.fader = [this](std::uint8_t value) { session_.fader(value); };
         actions.button = [this](std::size_t i, bool down) { session_.button(i, down, 0); };
-        actions.release = [this] { session_.release_all(0); };
+        actions.release = [this] {
+            ++releases_;
+            session_.release_all(0);
+        };
         std::string diagnostic;
+        bool backend_unavailable = false;
         panel_ = CreateWebPanel(
             frame_, actions, [this] { ++ready_count_; },
-            [](const std::string &why) {
+            [this](const std::string &why) {
+                if (phase_ == 6) {
+                    CHECK(releases_ > releases_before_failure_ && session_.state().master == 7);
+                    std::cout << "Actual web renderer: preset click, DOM sync, UTF-8 labels, "
+                                 "reload, navigation veto and script failure release passed\n";
+                    std::exit(0);
+                }
                 std::cerr << why << '\n';
                 std::exit(1);
             },
-            diagnostic);
+            diagnostic, &backend_unavailable);
         if (!panel_) {
-            std::cerr << "SKIP: " << diagnostic << '\n';
-            std::exit(77);
+            std::cerr << (backend_unavailable ? "SKIP: " : "FAIL: ") << diagnostic << '\n';
+            std::exit(backend_unavailable ? 77 : 1);
         }
         auto *layout = new wxBoxSizer(wxVERTICAL);
         layout->Add(&panel_->Window(), 1, wxEXPAND);
@@ -58,9 +68,11 @@ class RendererTestApp final : public wxApp {
                 } else if (phase_ == 5) {
                     CHECK(session_.state().master == 0);
                     CHECK(session_.button_selected(2, 0));
-                    std::cout << "Actual web renderer: preset click, DOM sync, escaped labels, "
-                                 "reload and navigation guard passed\n";
-                    std::exit(0);
+                    phase_ = 6;
+                    releases_before_failure_ = releases_;
+                    RunPanelScript(*browser_, "window.brasscuePanel={apply:function(){throw new "
+                                              "Error('test failure');}};");
+                    session_.fader(7);
                 }
             } else if (result != "wait" && result != "\"wait\"") {
                 std::cerr << "Unexpected DOM result: " << result << '\n';
@@ -125,7 +137,7 @@ class RendererTestApp final : public wxApp {
     WebPanelInterface *panel_ = nullptr;
     wxWebView *browser_ = nullptr;
     wxTimer *timer_ = nullptr;
-    int phase_ = 0, ready_count_ = 0, ticks_ = 0;
+    int phase_ = 0, ready_count_ = 0, ticks_ = 0, releases_ = 0, releases_before_failure_ = 0;
     bool pending_ = false;
 };
 wxIMPLEMENT_APP(RendererTestApp);
