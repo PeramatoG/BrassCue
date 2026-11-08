@@ -248,6 +248,24 @@ class KeyboardTestApp final : public wxApp {
         CHECK(mouse.MouseUp());
         Pump();
         CHECK(session.state().master == 255 && !fader->HasCapture());
+        // At compact heights the travel has fewer pixels than DMX values.
+        // An off-center cap click must not quantize an untouched byte on grab/release.
+        frame->SetSize(240, 240);
+        Pump();
+        session.fader(53);
+        fader->SetValue(53);
+        const auto compact = fader->GetClientSize();
+        const auto position = fader->ClientToScreen(wxPoint(0, 0));
+        const int margin = fader->FromDIP(22);
+        const int center = margin + int(std::lround((compact.y - 2 * margin) * 202 / 255.0));
+        const int unchanged = notifications;
+        CHECK(mouse.MouseMove(position.x + compact.x / 2, position.y + center + fader->FromDIP(5)));
+        CHECK(mouse.MouseDown());
+        Pump();
+        CHECK(mouse.MouseUp());
+        Pump();
+        CHECK(session.state().master == 53 && fader->GetValue() == 53 &&
+              notifications == unchanged);
         Focus(fader);
         Key(WXK_TAB);
         CHECK(!fader->HasFocus());

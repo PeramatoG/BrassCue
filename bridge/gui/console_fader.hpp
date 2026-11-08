@@ -19,6 +19,6 @@ class ConsoleFader final : public wxControl {
     void Change(int);
     void Paint(wxPaintEvent &);
     int value_ = 255;
-    int grab_offset_ = 0;
+    double grab_offset_ = 0;
     std::function<void(int)> changed_;
 };
