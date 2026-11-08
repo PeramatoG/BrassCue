@@ -41,6 +41,8 @@ bridge/gui/
   button_editor.*          explicit action/mode/Kill/fade editor
   dark_theme.*             documented DWM and wx appearance APIs
   widgets.*                rotary input, cue edges and simulated TFT
+  console_fader.*          DPI-scaled fader drawing/input; no live state ownership
+  editor_buttons.hpp      standard button order without an implicit default OK
   profile_editor.*         transactional contextual editor
   profile_files.*          user-selected profile file workflow
 bridge/tests/              pure native unit/integration tests

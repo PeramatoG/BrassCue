@@ -18,6 +18,16 @@ AssignmentTable::AssignmentTable(wxWindow *parent, std::vector<brasscue::Assignm
     root->Add(units_, 0, wxEXPAND | wxALL, 6);
     grid_ = new wxGrid(this, GridId);
     grid_->CreateGrid(0, 3);
+    grid_->SetTabBehaviour(wxGrid::Tab_Leave);
+    grid_->Bind(wxEVT_GRID_TABBING, [this](wxGridEvent &e) {
+        // wxGrid tests the physical last column before skipping hidden columns.
+        // Internal tables hide column 2: finish column 1 before leaving the grid.
+        if (internal_ && e.GetCol() == 1 && !e.ShiftDown()) {
+            grid_->DisableCellEditControl();
+            grid_->Navigate(wxNavigationKeyEvent::IsForward);
+        } else
+            e.Skip();
+    });
     root->Add(grid_, 1, wxEXPAND | wxALL, 6);
     auto *row = new wxBoxSizer(wxHORIZONTAL);
     auto *add = new wxButton(this, AddId, "Add");

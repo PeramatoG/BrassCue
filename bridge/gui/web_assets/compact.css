@@ -5,10 +5,12 @@ body { margin:0; padding:14px; }
 main { display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:24px; min-height:570px; height:calc(100vh - 65px); }
 h2 { font-size:14px; font-weight:500; margin:5px 0; }
 .fader-column,.right-column,#encoders { display:flex; flex-direction:column; align-items:center; gap:10px; min-width:0; }
-.fader-rail { flex:1; min-height:260px; width:90px; display:flex; justify-content:center; background:repeating-linear-gradient(to top,transparent 0 25px,#595449 26px,transparent 27px) center / 65px 90% no-repeat; }
-#fader { writing-mode:vertical-lr; direction:rtl; appearance:none; -webkit-appearance:none; height:100%; width:48px; background:transparent; cursor:ns-resize; }
-#fader::-webkit-slider-runnable-track { width:6px; height:100%; background:#101115; border:1px solid #49443b; border-radius:3px; }
-#fader::-webkit-slider-thumb { appearance:none; -webkit-appearance:none; width:48px; height:26px; margin-left:-22px; border:1px solid #b5aea0; border-radius:3px; background:linear-gradient(to bottom,#85888a,#45484a 45%,#dfb85f 47%,#dfb85f 53%,#35383b 55%,#777b7d); box-shadow:0 2px 4px #08090b; }
+.fader-rail { flex:1; min-height:160px; width:80px; padding:8px 0; display:flex; justify-content:center; background:repeating-linear-gradient(to top,transparent 0 25px,#695e47 26px,transparent 27px) center / 62px calc(100% - 44px) no-repeat; }
+#fader { writing-mode:vertical-lr; direction:rtl; appearance:none; -webkit-appearance:none; height:100%; min-height:144px; width:48px; margin:0; background:transparent; cursor:ns-resize; }
+#fader::-webkit-slider-runnable-track { width:8px; height:100%; background:#0a0b0e; border:1px solid #4a4231; border-radius:3px; box-shadow:inset 1px 0 2px #000; }
+#fader::-webkit-slider-thumb { appearance:none; -webkit-appearance:none; width:48px; height:28px; margin-left:-21px; border:1px solid #b5b1a2; border-radius:1px; background:linear-gradient(to bottom,#999d9f,#666a6e 43%,#1c1e21 44%,#1c1e21 51%,#cda154 52%,#cda154 56%,#53575b 57%,#3e4246); box-shadow:2px 3px 2px #08090b; }
+#fader::-moz-range-track { width:8px; height:100%; background:#0a0b0e; border:1px solid #4a4231; border-radius:3px; }
+#fader::-moz-range-thumb { width:48px; height:28px; border:1px solid #b5b1a2; border-radius:1px; background:linear-gradient(to bottom,#999d9f,#666a6e 43%,#1c1e21 44%,#1c1e21 51%,#cda154 52%,#cda154 56%,#53575b 57%,#3e4246); box-shadow:2px 3px 2px #08090b; }
 #display { font:32px monospace; letter-spacing:3px; color:#ffb824; background:#101115; border:1px solid #494234; padding:10px; }
 #effective-master { color:#a9a69e; font-size:12px; }
 .encoder { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }

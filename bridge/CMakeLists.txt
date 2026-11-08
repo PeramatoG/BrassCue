@@ -48,7 +48,7 @@ if(BRASSCUE_BUILD_GUI)
     include(${wxWidgets_USE_FILE})
   endif()
   add_library(brasscue-gui-support
-    gui/widgets.cpp gui/profile_editor.cpp gui/profile_files.cpp
+    gui/widgets.cpp gui/console_fader.cpp gui/profile_editor.cpp gui/profile_files.cpp
     gui/assignment_table.cpp gui/button_editor.cpp gui/dark_theme.cpp
     gui/network_panel.cpp gui/native_panel.cpp gui/panel_host.cpp ${brasscue_web_source})
   target_compile_features(brasscue-gui-support PUBLIC cxx_std_17)
@@ -136,6 +136,10 @@ if(BRASSCUE_BUILD_GUI AND BUILD_TESTING)
   target_link_libraries(brasscue-gui-editor-test PRIVATE brasscue-gui-support)
   add_test(NAME brasscue-gui-editor COMMAND brasscue-gui-editor-test)
   set_tests_properties(brasscue-gui-editor PROPERTIES TIMEOUT 30)
+  add_executable(brasscue-gui-keyboard-test WIN32 tests/gui_keyboard_test.cpp)
+  target_link_libraries(brasscue-gui-keyboard-test PRIVATE brasscue-gui-support)
+  add_test(NAME brasscue-gui-keyboard COMMAND brasscue-gui-keyboard-test)
+  set_tests_properties(brasscue-gui-keyboard PROPERTIES TIMEOUT 180 SKIP_RETURN_CODE 77)
 endif()
 
 if(BUILD_TESTING)

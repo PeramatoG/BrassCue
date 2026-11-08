@@ -2,6 +2,7 @@
 #include "button_editor.hpp"
 #include "assignment_table.hpp"
 #include "dark_theme.hpp"
+#include "editor_buttons.hpp"
 #include <cmath>
 #include <wx/spinctrl.h>
 namespace {
@@ -15,7 +16,10 @@ class ButtonDialog final : public wxDialog {
         const auto &b = p.buttons.at(index);
         auto *root = new wxBoxSizer(wxVERTICAL);
         root->Add(new wxStaticText(this, wxID_ANY, "Button label"), 0, wxALL, 6);
-        label_ = new wxTextCtrl(this, LabelId, wxString::FromUTF8(p.button_labels[index]));
+        label_ = new wxTextCtrl(this, LabelId, wxString::FromUTF8(p.button_labels[index]),
+                                wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER);
+        // Enter belongs to this field, never the dialog default button.
+        label_->Bind(wxEVT_TEXT_ENTER, [](wxCommandEvent &) {});
         root->Add(label_, 0, wxEXPAND | wxALL, 6);
         action_ = new wxChoice(this, ActionId);
         action_->Append("DMX assignments");
@@ -39,15 +43,20 @@ class ButtonDialog final : public wxDialog {
         auto *timings = new wxFlexGridSizer(2, 2, 6, 6);
         timings->Add(new wxStaticText(this, wxID_ANY, "Fade in (s)"));
         in_ = new wxSpinCtrlDouble(this, FadeInId, "", wxDefaultPosition, wxDefaultSize,
-                                   wxSP_ARROW_KEYS, 0, 60, b.fade_in_ms / 1000.0, 0.1);
+                                   wxSP_ARROW_KEYS | wxTE_PROCESS_ENTER, 0, 60,
+                                   b.fade_in_ms / 1000.0, 0.1);
         in_->SetDigits(1);
         initial_in_ = in_->GetValue();
         timings->Add(in_);
         timings->Add(new wxStaticText(this, wxID_ANY, "Fade out (s)"));
         out_ = new wxSpinCtrlDouble(this, FadeOutId, "", wxDefaultPosition, wxDefaultSize,
-                                    wxSP_ARROW_KEYS, 0, 60, b.fade_out_ms / 1000.0, 0.1);
+                                    wxSP_ARROW_KEYS | wxTE_PROCESS_ENTER, 0, 60,
+                                    b.fade_out_ms / 1000.0, 0.1);
         out_->SetDigits(1);
         initial_out_ = out_->GetValue();
+        for (auto *field : {in_, out_})
+            field->Bind(wxEVT_TEXT_ENTER,
+                        [field](wxCommandEvent &) { field->SetValue(field->GetValue()); });
         timings->Add(out_);
         root->Add(timings, 0, wxALL, 6);
         table_ = new AssignmentTable(this, b.assignments, b.controls, p.units,
@@ -57,7 +66,7 @@ class ButtonDialog final : public wxDialog {
                                    "Manual control takes over. Internal Flash restores its "
                                    "previous values; Toggle-off targets zero."),
                   0, wxALL, 6);
-        root->Add(CreateSeparatedButtonSizer(wxOK | wxCANCEL), 0, wxEXPAND | wxALL, 6);
+        root->Add(EditorButtons(*this), 0, wxEXPAND | wxALL, 6);
         SetSizer(root);
         ApplyDarkTheme(*this);
         action_->Bind(wxEVT_CHOICE, [this](wxCommandEvent &) {

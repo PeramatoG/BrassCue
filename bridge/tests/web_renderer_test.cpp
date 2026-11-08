@@ -65,6 +65,16 @@ class RendererTestApp final : public wxApp {
                     CHECK(session_.state().master == 128);
                     browser_->LoadURL("https://example.invalid/brasscue-blocked");
                     phase_ = 4;
+                } else if (phase_ == 7) {
+                    CHECK(session_.state().master == 84);
+                    CHECK(!session_.button_selected(1, 0));
+                    RunPanelScript(*browser_, "var f=document.getElementById('fader');"
+                                              "f.value='255';f.dispatchEvent(new Event('input'));");
+                    phase_ = 8;
+                } else if (phase_ == 8) {
+                    CHECK(session_.state().master == 255);
+                    RunPanelScript(*browser_, "document.getElementById('cue-2').click();");
+                    phase_ = 5;
                 } else if (phase_ == 5) {
                     CHECK(session_.state().master == 0);
                     CHECK(session_.button_selected(2, 0));
@@ -124,8 +134,15 @@ class RendererTestApp final : public wxApp {
             Query("document.getElementById('fader').value==='128' ? 'ok' : 'wait'");
         } else if (phase_ == 4) {
             CHECK(browser_->GetCurrentURL().StartsWith("file:"));
-            RunPanelScript(*browser_, "document.getElementById('cue-2').click();");
-            phase_ = 5;
+            RunPanelScript(*browser_, "var f=document.getElementById('fader');"
+                                      "f.value='84';f.dispatchEvent(new Event('input'));");
+            phase_ = 7;
+        } else if (phase_ == 7) {
+            Query("document.getElementById('fader').value==='84' && "
+                  "document.getElementById('display').textContent.trim()==='33' ? 'ok' : 'wait'");
+        } else if (phase_ == 8) {
+            Query("document.getElementById('fader').value==='255' && "
+                  "document.getElementById('display').textContent.trim()==='100' ? 'ok' : 'wait'");
         } else if (phase_ == 5) {
             Query("document.getElementById('fader').value==='0' && "
                   "document.getElementById('cue-2').getAttribute('aria-pressed')==='true' ? 'ok' : "

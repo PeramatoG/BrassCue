@@ -17,10 +17,8 @@ NativePanel::NativePanel(wxWindow *parent, brasscue::ControllerActions actions)
     left->Add(fader_label_, 0, wxALL, 8);
     percent_ = new wxStaticText(this, wxID_ANY, "");
     left->Add(percent_, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 4);
-    fader_ = new wxSlider(this, FaderId, 255, 0, 255, wxDefaultPosition, FromDIP(wxSize(80, 360)),
-                          wxSL_VERTICAL | wxSL_INVERSE);
-    fader_->Bind(wxEVT_SLIDER,
-                 [this](wxCommandEvent &e) { actions_.fader(std::uint8_t(e.GetInt())); });
+    fader_ =
+        new ConsoleFader(this, FaderId, [this](int value) { actions_.fader(std::uint8_t(value)); });
     left->Add(fader_, 1, wxALIGN_CENTER_HORIZONTAL | wxALL, 8);
     digits_ = new wxStaticText(this, wxID_ANY, "");
     digits_->SetFont(wxFont(26, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD));
@@ -75,6 +73,7 @@ void NativePanel::Apply(const brasscue::ViewSnapshot &v) {
     if (!changes.any())
         return;
     if (changes.fader) {
+        fader_->SetName(wxString::FromUTF8(v.fader_label));
         if (fader_->GetValue() != v.fader)
             fader_->SetValue(v.fader);
         if (fader_label_->GetLabel() != wxString::FromUTF8(v.fader_label))
@@ -102,6 +101,7 @@ void NativePanel::Apply(const brasscue::ViewSnapshot &v) {
         Layout();
 }
 void NativePanel::ReleaseInputs() {
+    fader_->Release();
     for (auto *k : knobs_)
         k->Release();
     for (auto *b : buttons_)
@@ -110,6 +110,7 @@ void NativePanel::ReleaseInputs() {
         actions_.release();
 }
 void NativePanel::CheckPointer() {
+    fader_->CheckPointer();
     for (auto *k : knobs_)
         k->CheckPointer();
     for (auto *b : buttons_)
