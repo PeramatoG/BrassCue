@@ -5,6 +5,8 @@
 #include <wx/numdlg.h>
 #include <wx/tokenzr.h>
 #include <cstdio>
+#include <wx/config.h>
+#include <wx/numdlg.h>
 #include <chrono>
 #include <wx/textdlg.h>
 #include <wx/choicdlg.h>
@@ -177,8 +179,12 @@ public:
             auto* button = MakeButton(controls, wxString::Format("BUTTON %d", i + 1));
             buttons_[i] = button;
             button->Bind(wxEVT_RIGHT_UP, [this, i](wxMouseEvent&) { EditButton(i); });
+            button->Bind(wxEVT_LEFT_DOWN,[this,i](wxMouseEvent& e){ engine_.button(i,true,Now()); e.Skip(); });
+            button->Bind(wxEVT_LEFT_UP,[this,i](wxMouseEvent& e){ engine_.button(i,false,Now()); e.Skip(); });
             button->Bind(wxEVT_BUTTON, [this, i](wxCommandEvent&) {
-                SetStatus(wxString::Format("VIRTUAL BUTTON %d PRESSED  /  UNASSIGNED", i + 1));
+                engine_.button(i,true,Now());
+                engine_.button(i,false,Now());
+                SetStatus(wxString::Format("BUTTON %d TRIGGERED",i+1));
             });
             buttons->Add(button, 1, i == 2 ? 0 : wxRIGHT, 8);
         }
@@ -223,6 +229,7 @@ public:
         Bind(wxEVT_TIMER, [this](wxTimerEvent&) { UpdateFourDigit(); });
         displayTimer_.Start(100);
         engine_.configure_fader(faderConfig_);
+        for (int i=0;i<3;++i) engine_.configure_button(i,buttonConfigs_[i]);
         for (int i=0; i<4; ++i) engine_.set_encoder(i, encoderAssignments_[i], 0);
         cueTimer_.SetOwner(this);
         Bind(wxEVT_TIMER, [this](wxTimerEvent&) { SendOutput(); }, cueTimer_.GetId());
@@ -336,7 +343,7 @@ private:
     void StateChanged() {
         for (std::size_t i = 0; i < 4; ++i) {
             const auto value = state_.rgbw[i];
-            values_[i]->SetLabel(wxString::Format("%03u / %02X", unsigned(value), unsigned(value)));
+            values_[i]->SetLabel(wxString::Format("%u%%", brasscue::to_percent(value)));
         }
         display_.set_master(state_.master);
         UpdateFourDigit();
@@ -384,6 +391,7 @@ private:
     brasscue::State state_;
     brasscue::FourDigitDisplay display_;
     brasscue::CueEngine engine_;
+    std::array<brasscue::ButtonConfig,3> buttonConfigs_{};
     brasscue::FaderConfig faderConfig_;
     std::array<std::vector<brasscue::Assignment>,4> encoderAssignments_{{
         {{{1,1},255}}, {{{1,2},255}}, {{{1,3},255}}, {{{1,4},255}}
