@@ -17,14 +17,19 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         p.stdin.flush()
         expected = bytes([128, 0, 0, 0, 64])
         matched = 0
+        first_match = None
+        last_match = None
         deadline = time.monotonic() + 5
-        while matched < 3 and time.monotonic() < deadline:
+        while (matched < 3 or first_match is None or last_match - first_match < 0.08) and time.monotonic() < deadline:
             packet = sock.recv(2048)
             if len(packet) != 530 or packet[:12] != b'Art-Net\x00\x00P\x00\x0e' or packet[14:18] != bytes([255, 127, 2, 0]):
                 raise RuntimeError('Invalid ArtDmx framing')
             if packet[18:23] == expected:
                 matched += 1
-        if matched < 3:
+                last_match = time.monotonic()
+                if first_match is None:
+                    first_match = last_match
+        if matched < 3 or last_match - first_match < 0.08:
             raise RuntimeError('Missing periodic output while console input is idle')
         p.communicate('quit\n', timeout=5)
         if p.returncode:

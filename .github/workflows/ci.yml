@@ -1,7 +1,7 @@
 name: Bridge CI
 on:
   push:
-    branches: [main, feature/windows-graphical-simulator]
+    branches: [main]
   pull_request:
 jobs:
   bridge:
