@@ -156,8 +156,7 @@ void ColorPreview::SetView(const brasscue::ScreenViewData &view) {
     Refresh();
 }
 CueButton::CueButton(wxWindow *parent, std::function<void(bool)> event)
-    : wxControl(parent, wxID_ANY, wxDefaultPosition, wxSize(100, 70),
-                wxBORDER_NONE | wxWANTS_CHARS),
+    : wxControl(parent, wxID_ANY, wxDefaultPosition, wxSize(100, 70), wxBORDER_NONE),
       event_(std::move(event)) {
     SetCanFocus(true);
     SetMinSize(FromDIP(wxSize(80, 50)));
