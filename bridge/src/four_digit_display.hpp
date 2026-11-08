@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <string>
+#include "cue_engine.hpp"
 namespace brasscue {
 class FourDigitDisplay {
 public:
@@ -20,9 +21,9 @@ public:
         if (showing_encoder_ && now_ms >= last_change_ms_ &&
             now_ms - last_change_ms_ < 2000) {
             constexpr std::array<char,4> labels{{'R','G','B','W'}};
-            std::snprintf(buffer,sizeof(buffer),"%c %02X",labels[active_],value_);
+            std::snprintf(buffer,sizeof(buffer),"%c%3u",labels[active_],to_percent(value_));
         } else {
-            std::snprintf(buffer,sizeof(buffer),"%04X",master_);
+            std::snprintf(buffer,sizeof(buffer),"%4u",to_percent(master_));
         }
         return buffer;
     }
