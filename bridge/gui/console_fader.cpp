@@ -66,8 +66,10 @@ ConsoleFader::ConsoleFader(wxWindow *parent, wxWindowID id, std::function<void(i
     });
     Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &e) {
         SetFocus();
-        grab_offset_ =
-            Cap().Contains(e.GetPosition()) ? e.GetY() - (Cap().y + Cap().height / 2) : 0;
+        // Preserve byte precision when the rail has fewer than 255 pixels of travel.
+        const double center =
+            Margin() + (GetClientSize().y - 2 * Margin()) * (255 - value_) / 255.0;
+        grab_offset_ = Cap().Contains(e.GetPosition()) ? e.GetY() - center : 0;
         if (!HasCapture())
             CaptureMouse();
         MoveTo(e.GetY());
