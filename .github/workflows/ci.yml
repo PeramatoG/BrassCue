@@ -36,8 +36,11 @@ jobs:
       - name: Classic vcpkg wxWidgets
         shell: pwsh
         run: |
-          ./.ci-vcpkg/bootstrap-vcpkg.bat -disableMetrics
-          ./.ci-vcpkg/vcpkg.exe install wxwidgets:x64-windows --classic
+          $tool = Join-Path $env:VCPKG_INSTALLATION_ROOT "vcpkg.exe"
+          if (!(Test-Path $tool)) { throw "Runner-provided vcpkg.exe is missing" }
+          & $tool version
+          & $tool install wxwidgets:x64-windows --classic --vcpkg-root="$PWD/.ci-vcpkg"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Configure GUI
         run: cmake -S . -B out/gui -A x64 -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/.ci-vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_TARGET_TRIPLET=x64-windows -DBRASSCUE_BUILD_GUI=ON -DBUILD_TESTING=ON
       - run: cmake --build out/gui --config Debug --parallel 4
