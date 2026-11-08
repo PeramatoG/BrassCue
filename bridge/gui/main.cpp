@@ -1,6 +1,10 @@
 #include "../src/bridge_core.hpp"
 #include "../src/controller_profile.hpp"
 #include "../src/four_digit_display.hpp"
+#include "../src/cue_engine.hpp"
+#include <wx/numdlg.h>
+#include <wx/tokenzr.h>
+#include <cstdio>
 #include <chrono>
 #include <wx/textdlg.h>
 #include <wx/choicdlg.h>
@@ -128,6 +132,7 @@ public:
             sliders_[i]->Bind(wxEVT_SLIDER, [this, i](wxCommandEvent& e) {
                 state_.rgbw[static_cast<std::size_t>(i)] = static_cast<std::uint8_t>(e.GetInt());
                 display_.encoder_changed(i, state_.rgbw[static_cast<std::size_t>(i)], Now());
+                engine_.set_encoder(i, encoderAssignments_[i], state_.rgbw[i]);
                 StateChanged();
             });
             column->Add(sliders_[i], 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
@@ -160,6 +165,7 @@ public:
         grandmaster_ = new wxSlider(master, wxID_ANY, 255, 0, 255);
         grandmaster_->Bind(wxEVT_SLIDER, [this](wxCommandEvent& e) {
             state_.master = static_cast<std::uint8_t>(e.GetInt());
+            engine_.set_fader(state_.master);
             StateChanged();
         });
         masterBox->Add(grandmaster_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
@@ -205,6 +211,9 @@ public:
         send->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { SendOutput(); });
         networkRow->Add(send, 0);
         outputBox->Add(networkRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 16);
+        broadcast_ = new wxCheckBox(output, wxID_ANY, "Broadcast (target address)");
+        broadcast_->SetForegroundColour(kText);
+        outputBox->Add(broadcast_, 0, wxLEFT | wxRIGHT | wxBOTTOM, 16);
         outputBox->Add(MakeLabel(output, "Simulation mode: hardware serial is not connected.", 9),
                        0, wxLEFT | wxRIGHT | wxBOTTOM, 16);
         output->SetSizer(outputBox);
@@ -213,6 +222,11 @@ public:
         displayTimer_.SetOwner(this);
         Bind(wxEVT_TIMER, [this](wxTimerEvent&) { UpdateFourDigit(); });
         displayTimer_.Start(100);
+        engine_.configure_fader(faderConfig_);
+        for (int i=0; i<4; ++i) engine_.set_encoder(i, encoderAssignments_[i], 0);
+        cueTimer_.SetOwner(this);
+        Bind(wxEVT_TIMER, [this](wxTimerEvent&) { SendOutput(); }, cueTimer_.GetId());
+        cueTimer_.Start(40);
         SetSizer(outer);
         StateChanged();
         Centre();
@@ -306,6 +320,7 @@ private:
         state_.rgbw[static_cast<std::size_t>(channel)] = value;
         display_.encoder_changed(channel, value, Now());
         sliders_[channel]->SetValue(value);
+        engine_.set_encoder(channel, encoderAssignments_[channel], value);
         StateChanged();
     }
 
@@ -341,7 +356,7 @@ private:
             return;
         }
         try {
-            udp_ = std::make_unique<brasscue::UdpTarget>(targetIp_->GetValue().ToStdString());
+            udp_ = std::make_unique<brasscue::UdpTarget>(targetIp_->GetValue().ToStdString(), broadcast_->GetValue());
             SetStatus("SIMULATION  |  ART-NET ENABLED");
             SendOutput();
         } catch (const std::exception& e) {
@@ -355,8 +370,8 @@ private:
     void SendOutput() {
         if (!udp_) return;
         try {
-            udp_->send(brasscue::build_artdmx(state_,
-                static_cast<std::uint16_t>(universe_->GetValue())));
+            const auto frames = engine_.render(Now());
+            for (const auto& frame : frames) udp_->send(engine_.packet(frame.first, Now()));
         } catch (const std::exception& e) {
             udp_.reset();
             enable_->SetValue(false);
@@ -368,6 +383,13 @@ private:
 
     brasscue::State state_;
     brasscue::FourDigitDisplay display_;
+    brasscue::CueEngine engine_;
+    brasscue::FaderConfig faderConfig_;
+    std::array<std::vector<brasscue::Assignment>,4> encoderAssignments_{{
+        {{{1,1},255}}, {{{1,2},255}}, {{{1,3},255}}, {{{1,4},255}}
+    }};
+    wxTimer cueTimer_;
+    wxCheckBox* broadcast_ = nullptr;
     wxTimer displayTimer_;
     std::array<wxSlider*, 4> sliders_{};
     std::array<wxStaticText*, 4> values_{};
