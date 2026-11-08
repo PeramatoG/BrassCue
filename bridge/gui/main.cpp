@@ -1,5 +1,7 @@
 #include "../src/bridge_core.hpp"
 #include "../src/controller_profile.hpp"
+#include "../src/four_digit_display.hpp"
+#include <chrono>
 #include <wx/textdlg.h>
 #include <wx/choicdlg.h>
 #include "../src/artnet_udp.hpp"
@@ -125,6 +127,7 @@ public:
                                       wxDefaultPosition, wxSize(190, -1));
             sliders_[i]->Bind(wxEVT_SLIDER, [this, i](wxCommandEvent& e) {
                 state_.rgbw[static_cast<std::size_t>(i)] = static_cast<std::uint8_t>(e.GetInt());
+                display_.encoder_changed(i, state_.rgbw[static_cast<std::size_t>(i)], Now());
                 StateChanged();
             });
             column->Add(sliders_[i], 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
@@ -207,6 +210,9 @@ public:
         output->SetSizer(outputBox);
         content->Add(output, 2, wxEXPAND);
         outer->Add(content, 1, wxEXPAND | wxALL, 24);
+        displayTimer_.SetOwner(this);
+        Bind(wxEVT_TIMER, [this](wxTimerEvent&) { UpdateFourDigit(); });
+        displayTimer_.Start(100);
         SetSizer(outer);
         StateChanged();
         Centre();
@@ -298,10 +304,18 @@ private:
         const int current = state_.rgbw[static_cast<std::size_t>(channel)];
         const auto value = static_cast<std::uint8_t>((std::max)(0, (std::min)(255, current + change)));
         state_.rgbw[static_cast<std::size_t>(channel)] = value;
+        display_.encoder_changed(channel, value, Now());
         sliders_[channel]->SetValue(value);
         StateChanged();
     }
 
+    static std::uint64_t Now() {
+        using namespace std::chrono;
+        return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+    }
+    void UpdateFourDigit() {
+        masterValue_->SetLabel(wxString::FromUTF8(display_.text(Now())));
+    }
     void SetStatus(const wxString& message) { status_->SetLabel(message); }
 
     void StateChanged() {
@@ -309,8 +323,8 @@ private:
             const auto value = state_.rgbw[i];
             values_[i]->SetLabel(wxString::Format("%03u / %02X", unsigned(value), unsigned(value)));
         }
-        masterValue_->SetLabel(wxString::Format("%03u / %04X",
-                                                unsigned(state_.master), unsigned(state_.master)));
+        display_.set_master(state_.master);
+        UpdateFourDigit();
         outputValues_->SetLabel(wxString::Format("DMX 1-4: %u  %u  %u  %u",
             unsigned(brasscue::apply_master(state_.rgbw[0], state_.master)),
             unsigned(brasscue::apply_master(state_.rgbw[1], state_.master)),
@@ -353,6 +367,8 @@ private:
     }
 
     brasscue::State state_;
+    brasscue::FourDigitDisplay display_;
+    wxTimer displayTimer_;
     std::array<wxSlider*, 4> sliders_{};
     std::array<wxStaticText*, 4> values_{};
     wxSlider* grandmaster_ = nullptr;
