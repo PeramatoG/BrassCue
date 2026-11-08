@@ -2,12 +2,6 @@
 #pragma once
 #include "controller_profile.hpp"
 #include <filesystem>
-#include <fstream>
-#include <iomanip>
-#include <sstream>
-#ifdef _WIN32
-#include <windows.h>
-#endif
 namespace brasscue {
 std::string serialize_profile(const ControlProfile &profile);
 ControlProfile parse_profile(const std::string &text);

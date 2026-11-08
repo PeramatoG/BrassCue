@@ -1,5 +1,11 @@
 // BrassCue - GPL-3.0. Strict ordered text format, UTF-8 quoted labels.
 #include "profile_io.hpp"
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 namespace brasscue {
 namespace {
 void patch_out(std::ostream &out, const std::vector<Assignment> &patch) {

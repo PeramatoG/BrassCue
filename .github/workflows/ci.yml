@@ -20,6 +20,9 @@ jobs:
       - run: ctest --test-dir build -C ${{ matrix.config }} --output-on-failure --no-tests=error
   windows-gui:
     runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      VCPKG_MAX_CONCURRENCY: "4"
     steps:
       - uses: actions/checkout@v4
       - name: Inspect runner classic vcpkg
@@ -31,7 +34,8 @@ jobs:
           "root=$root" >> $env:GITHUB_OUTPUT
           "revision=$(git -C $root rev-parse HEAD)" >> $env:GITHUB_OUTPUT
           & "$root/vcpkg.exe" version
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
+        id: wx-cache
         with:
           path: |
             ${{ steps.vcpkg.outputs.root }}/installed
@@ -42,6 +46,14 @@ jobs:
         run: |
           & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install wxwidgets:x64-windows --classic
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Save verified wxWidgets dependencies
+        if: steps.wx-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ steps.vcpkg.outputs.root }}/installed
+            ${{ steps.vcpkg.outputs.root }}/downloads
+          key: windows-wxwidgets-classic-${{ steps.vcpkg.outputs.revision }}-v1
       - name: Configure GUI
         shell: pwsh
         run: cmake -S . -B out/gui -A x64 "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_TARGET_TRIPLET=x64-windows -DBRASSCUE_BUILD_GUI=ON -DBUILD_TESTING=ON
