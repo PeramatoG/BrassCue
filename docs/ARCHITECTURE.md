@@ -9,6 +9,8 @@ The Uno pinout and physical displays still require verification.
 bridge/src/
   controller_profile.hpp   canonical configuration, defaults and validation
   patch.hpp                visible addresses, assignments and cue configuration
+  assignment_editor.hpp    pure table-row parsing and lossless unit edits
+  utf8.hpp                 strict persisted-label validation
   controller_session.hpp   authoritative live State and event coordination
   cue_engine.hpp           derived cue state, fades, HTP and DMX snapshots
   value_conversion.hpp     neutral percent/DMX conversions

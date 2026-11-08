@@ -2,6 +2,7 @@
 #pragma once
 #include "network_config.hpp"
 #include "patch.hpp"
+#include "utf8.hpp"
 #include <array>
 #include <string>
 namespace brasscue {
@@ -30,8 +31,8 @@ struct ControlProfile {
 };
 inline void validate(const ControlProfile &p) {
     const auto text = [](const std::string &s) {
-        if (s.empty() || s.size() > 128 || s.find_first_of("\r\n") != std::string::npos ||
-            s.find('\0') != std::string::npos)
+        if (!valid_utf8(s) || s.empty() || s.size() > 128 ||
+            s.find_first_of("\r\n") != std::string::npos || s.find('\0') != std::string::npos)
             throw std::invalid_argument("Labels must contain 1..128 bytes without line breaks");
     };
     text(p.id);

@@ -8,6 +8,12 @@
 #include <chrono>
 #include <wx/slider.h>
 namespace {
+enum ControlId {
+    EncoderBase = wxID_HIGHEST + 100,
+    FaderId = EncoderBase + 4,
+    CueBase = FaderId + 1,
+    PreviewId = CueBase + 3
+};
 std::uint64_t Now() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
                std::chrono::steady_clock::now().time_since_epoch())
@@ -35,6 +41,7 @@ class MainFrame final : public wxFrame {
         left->Add(masterLabel_, 0, wxALL, 8);
         fader_ = new wxSlider(this, wxID_ANY, 255, 0, 255, wxDefaultPosition,
                               FromDIP(wxSize(80, 360)), wxSL_VERTICAL | wxSL_INVERSE);
+        fader_->SetId(FaderId);
         left->Add(fader_, 1, wxALIGN_CENTER_HORIZONTAL | wxALL, 8);
         digits_ = Label(this, " 100");
         digits_->SetForegroundColour(wxColour(255, 184, 36));
@@ -58,6 +65,7 @@ class MainFrame final : public wxFrame {
                 display_.encoder_changed(i, v, Now());
                 RefreshState();
             });
+            knobs_[i]->SetId(EncoderBase + i);
             row->Add(knobs_[i], 1, wxEXPAND);
             BindEdit(knobs_[i], i);
             BindEdit(encoderLabels_[i], i);
@@ -66,6 +74,7 @@ class MainFrame final : public wxFrame {
         front->Add(middle, 1, wxEXPAND | wxALL, 8);
         auto *right = new wxBoxSizer(wxVERTICAL);
         preview_ = new ColorPreview(this);
+        preview_->SetId(PreviewId);
         BindEdit(preview_, 8);
         right->Add(preview_, 2, wxEXPAND | wxBOTTOM, 12);
         for (int i = 0; i < 3; ++i) {
@@ -73,6 +82,7 @@ class MainFrame final : public wxFrame {
                 session_.button(i, down, Now());
                 RefreshState();
             });
+            buttons_[i]->SetId(CueBase + i);
             right->Add(buttons_[i], 1, wxEXPAND | wxTOP | wxBOTTOM, 8);
             BindEdit(buttons_[i], i + 5);
         }
@@ -93,12 +103,12 @@ class MainFrame final : public wxFrame {
         ip_->Bind(wxEVT_TEXT, [this](wxCommandEvent &) { NetworkEdited(); });
         broadcast_->Bind(wxEVT_CHECKBOX, [this](wxCommandEvent &) { NetworkEdited(); });
         auto *menu = new wxMenu;
-        menu->Append(wxID_OPEN, "Open / import...");
-        menu->Append(wxID_SAVE, "Save");
-        menu->Append(wxID_SAVEAS, "Save as / export...");
+        menu->Append(wxID_OPEN, "Open / import...\tCtrl+O");
+        menu->Append(wxID_SAVE, "Save\tCtrl+S");
+        menu->Append(wxID_SAVEAS, "Save as / export...\tCtrl+Shift+S");
         menu->Append(wxID_NEW, "Restore defaults");
         auto *bar = new wxMenuBar;
-        bar->Append(menu, "Profile");
+        bar->Append(menu, "&Profile");
         SetMenuBar(bar);
         Bind(
             wxEVT_MENU,
@@ -115,14 +125,14 @@ class MainFrame final : public wxFrame {
         Bind(
             wxEVT_MENU,
             [this](wxCommandEvent &) {
-                files_.Save(this, session_.profile());
+                Save(false);
                 RefreshState();
             },
             wxID_SAVE);
         Bind(
             wxEVT_MENU,
             [this](wxCommandEvent &) {
-                files_.Save(this, session_.profile(), true);
+                Save(true);
                 RefreshState();
             },
             wxID_SAVEAS);
@@ -203,16 +213,26 @@ class MainFrame final : public wxFrame {
         preview_->SetState(s, p);
         SetTitle(wxString::FromUTF8(p.name) + (files_.dirty() ? " *" : "") + " | BrassCue");
     }
+    void Save(bool save_as) {
+        try {
+            session_.network(ip_->GetValue().ToStdString(), broadcast_->GetValue());
+            files_.Save(this, session_.profile(), save_as);
+        } catch (const std::exception &e) {
+            wxMessageBox(wxString::FromUTF8(e.what()), "Invalid profile", wxOK | wxICON_ERROR,
+                         this);
+        }
+    }
     void NetworkEdited() {
         Stop();
+        files_.Changed();
         auto p = session_.profile();
         p.target_ip = ip_->GetValue().ToStdString();
         p.allow_broadcast = broadcast_->GetValue();
         try {
             session_.network(p.target_ip, p.allow_broadcast);
             files_.Changed();
-        } catch (
-            const std::exception &) { /* Incomplete address is kept in the input until valid. */
+        } catch (const std::exception &) {
+            status_->SetLabel("SIMULATION | Invalid network draft; correct before saving");
         }
     }
     void Network() {

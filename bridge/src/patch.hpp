@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <map>
 #include <stdexcept>
+#include <string>
 #include <vector>
 namespace brasscue {
 struct Address {
@@ -37,9 +38,12 @@ inline void validate(const std::vector<Assignment> &entries) {
     if (entries.size() > 512)
         throw std::invalid_argument("At most 512 assignments per control");
     std::map<Address, bool> used;
+    std::size_t row = 0;
     for (const auto &e : entries) {
+        ++row;
         if (!valid_address(e.address) || !used.emplace(e.address, true).second)
-            throw std::invalid_argument("Invalid or duplicate universe.channel assignment");
+            throw std::invalid_argument("Row " + std::to_string(row) +
+                                        ": invalid or duplicate universe.channel assignment");
     }
 }
 } // namespace brasscue

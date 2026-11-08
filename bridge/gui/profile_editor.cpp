@@ -1,6 +1,6 @@
 // BrassCue - GPL-3.0. One modal transaction with a multi-universe assignment table.
 #include "profile_editor.hpp"
-#include "../src/serial_protocol.hpp"
+#include "../src/assignment_editor.hpp"
 #include <vector>
 #include <wx/choice.h>
 #include <wx/grid.h>
@@ -155,17 +155,16 @@ class ElementDialog final : public wxDialog {
         grid_->HideCellEditControl();
         auto candidate = entries_;
         for (int row = 0; row < grid_->GetNumberRows(); ++row) {
-            int u = 0, c = 0, v = 0;
-            if (!brasscue::decimal(grid_->GetCellValue(row, 0).ToStdString(), 32768, u) || u < 1 ||
-                !brasscue::decimal(grid_->GetCellValue(row, 1).ToStdString(), 512, c) || c < 1 ||
-                !brasscue::decimal(grid_->GetCellValue(row, 2).ToStdString(), percent_ ? 100 : 255,
-                                   v))
-                throw std::invalid_argument("Row " + std::to_string(row + 1) +
-                                            ": invalid universe, channel or target");
-            candidate[row].address = {std::uint16_t(u), std::uint16_t(c)};
-            // A unit toggle never quantizes untouched DMX bytes.
-            if (std::find(dirty_rows_.begin(), dirty_rows_.end(), row) != dirty_rows_.end())
-                candidate[row].value = percent_ ? brasscue::from_percent(v) : std::uint8_t(v);
+            try {
+                candidate[row] = brasscue::edit_assignment_row(
+                    entries_[row], grid_->GetCellValue(row, 0).ToStdString(),
+                    grid_->GetCellValue(row, 1).ToStdString(),
+                    grid_->GetCellValue(row, 2).ToStdString(),
+                    percent_ ? brasscue::ValueDisplay::Percent : brasscue::ValueDisplay::Dmx255,
+                    std::find(dirty_rows_.begin(), dirty_rows_.end(), row) != dirty_rows_.end());
+            } catch (const std::exception &e) {
+                throw std::invalid_argument("Row " + std::to_string(row + 1) + ": " + e.what());
+            }
         }
         brasscue::validate(candidate);
         entries_ = std::move(candidate);

@@ -22,4 +22,11 @@ int main() {
     d.set_master(0);
     d.encoder_changed(9, 200, 4300);
     CHECK(d.text(6300) == "   0");
+    brasscue::FourDigitDisplay switched;
+    switched.encoder_changed(0, 53, 100);
+    switched.encoder_changed(3, 20, 1000);
+    switched.set_master(128);
+    CHECK(switched.text(2100) == "W  8");
+    CHECK(switched.text(2999) == "W  8");
+    CHECK(switched.text(3000) == "  50");
 }

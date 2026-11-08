@@ -20,7 +20,7 @@ inline void validate_target(const std::string &ip, bool broadcast) {
         } else
             throw std::invalid_argument("Invalid IPv4 target");
     }
-    if (part != 3 || !digits || octets[0] == 0 || octets[0] >= 224 && ip != "255.255.255.255")
+    if (part != 3 || !digits || octets[0] == 0 || (octets[0] >= 224 && ip != "255.255.255.255"))
         throw std::invalid_argument("Target must be unicast or explicit broadcast IPv4");
     // Without interface masks, support only conventional x.x.x.255 broadcasts.
     if (broadcast && octets[3] != 255)

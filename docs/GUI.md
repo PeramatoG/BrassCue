@@ -51,7 +51,7 @@ TFT Color displays an approximate additive RGBW mix; Levels draws actual level
 bars. The four-character display temporarily shows an encoder for two seconds,
 then current GM. Custom labels keep stable R/G/B/W codes.
 
-Profile menu: Open/import, Save, Save as/export, Restore defaults. Network starts
+Profile menu: Open/import (Ctrl+O), Save (Ctrl+S), Save as/export (Ctrl+Shift+S), Restore defaults. Network starts
 OFF on launch/open/reset. Network edits stop output intentionally; re-enable when
 ready. Broadcast additionally requires a conventional x.x.x.255 target and opt-in.
 Profile operations and limitations are documented in [Profiles](PROFILES.md).
