@@ -221,7 +221,17 @@ public:
         Bind(wxEVT_TIMER, [this](wxTimerEvent&) { UpdateFourDigit(); }, displayTimer_.GetId());
         displayTimer_.Start(100);
         engine_.configure_fader(faderConfig_);
-        for (int i=0;i<3;++i) engine_.configure_button(i,buttonConfigs_[i]);
+        // Default compact room preset: exclusive 100%, 50%, 0% on DMX 1.5.
+        const std::array<std::uint8_t,3> roomValues{{255,128,0}};
+        const std::array<wxString,3> roomLabels{{"ROOM 100%", "ROOM 50%", "ROOM 0%"}};
+        for (int i=0;i<3;++i) {
+            buttonConfigs_[i].assignments = {{{1,5},roomValues[i]}};
+            buttonConfigs_[i].mode = brasscue::ButtonMode::Toggle;
+            buttonConfigs_[i].kill = true;
+            engine_.configure_button(i,buttonConfigs_[i]);
+            profile_.button_labels[i] = roomLabels[i].ToStdString();
+            buttons_[i]->SetLabel(roomLabels[i]);
+        }
         for (int i=0; i<4; ++i) engine_.set_encoder(i, encoderAssignments_[i], 0);
         cueTimer_.SetOwner(this);
         Bind(wxEVT_TIMER, [this](wxTimerEvent&) { SendOutput(); }, cueTimer_.GetId());
