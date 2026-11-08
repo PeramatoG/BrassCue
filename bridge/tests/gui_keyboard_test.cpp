@@ -201,16 +201,21 @@ class KeyboardTestApp final : public wxApp {
     void Fader() {
         auto *frame = new wxFrame(nullptr, wxID_ANY, "Fader keyboard and drag", wxDefaultPosition,
                                   wxSize(240, 480));
+        // Match the real NativePanel's standard traversal container on Windows.
+        auto *panel = new wxPanel(frame);
         brasscue::ControllerSession session;
         int notifications = 0;
-        auto *fader = new ConsoleFader(frame, wxID_ANY, [&](int value) {
+        auto *fader = new ConsoleFader(panel, wxID_ANY, [&](int value) {
             ++notifications;
             session.fader(value);
         });
         auto *layout = new wxBoxSizer(wxVERTICAL);
         layout->Add(fader, 1, wxEXPAND);
-        layout->Add(new wxButton(frame, wxID_ANY, "Tab destination"));
-        frame->SetSizer(layout);
+        layout->Add(new wxButton(panel, wxID_ANY, "Tab destination"));
+        panel->SetSizer(layout);
+        auto *root = new wxBoxSizer(wxVERTICAL);
+        root->Add(panel, 1, wxEXPAND);
+        frame->SetSizer(root);
         frame->Show();
         frame->Raise();
         Pump();
