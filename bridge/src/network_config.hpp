@@ -44,6 +44,8 @@ inline std::uint32_t prefix_mask(unsigned prefix) {
     return prefix ? 0xffffffffu << (32 - prefix) : 0;
 }
 inline std::string directed_broadcast(const std::string &address, const std::string &mask) {
+    if (mask.empty())
+        throw std::invalid_argument("Selected interface IPv4 mask is unavailable");
     auto ip = ipv4_number(address), netmask = ipv4_number(mask), inverse = ~netmask;
     if (netmask == 0 || inverse < 3 || (inverse & (inverse + 1)) != 0)
         throw std::invalid_argument(

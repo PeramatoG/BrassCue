@@ -9,7 +9,7 @@ int main() {
     CHECK(directed_broadcast("10.17.8.9", "255.255.254.0") == "10.17.9.255");
     CHECK(directed_broadcast("10.17.8.9", "255.255.255.128") == "10.17.8.127");
     CHECK(directed_broadcast("10.17.8.129", "255.255.255.192") == "10.17.8.191");
-    for (auto mask : {"0.0.0.0", "255.255.255.254", "255.255.255.255", "255.0.255.0"}) {
+    for (auto mask : {"", "0.0.0.0", "255.255.255.254", "255.255.255.255", "255.0.255.0"}) {
         bool failed = false;
         try {
             directed_broadcast("10.1.1.1", mask);
@@ -37,6 +37,15 @@ int main() {
         }
         CHECK(failed);
     }
+    interfaces[1].netmask.clear();
+    CHECK(resolve_network("10.2.3.4", false, "B", interfaces).source == "10.1.0.9");
+    bool unknown_mask_rejected = false;
+    try {
+        resolve_network("10.2.3.4", true, "B", interfaces);
+    } catch (const std::exception &) {
+        unknown_mask_rejected = true;
+    }
+    CHECK(unknown_mask_rejected);
     interfaces[0].active = false;
     bool failed = false;
     try {

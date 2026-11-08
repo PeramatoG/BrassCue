@@ -57,9 +57,10 @@ std::vector<NetworkInterface> network_interfaces() {
             const bool loop = adapter->IfType == IF_TYPE_SOFTWARE_LOOPBACK;
             const bool broadcast =
                 !loop && adapter->IfType != IF_TYPE_PPP && adapter->IfType != IF_TYPE_TUNNEL;
-            result.push_back({std::string(adapter->AdapterName) + "/" + text, name, text,
-                              ipv4_text(prefix_mask(address->OnLinkPrefixLength)), adapter->IfIndex,
-                              true, loop, broadcast});
+            const auto prefix = address->OnLinkPrefixLength;
+            const auto mask = prefix <= 32 ? ipv4_text(prefix_mask(prefix)) : std::string{};
+            result.push_back({std::string(adapter->AdapterName) + "/" + text, name, text, mask,
+                              adapter->IfIndex, true, loop, broadcast});
         }
     }
 #else
