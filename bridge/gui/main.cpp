@@ -182,8 +182,6 @@ public:
             button->Bind(wxEVT_LEFT_DOWN,[this,i](wxMouseEvent& e){ engine_.button(i,true,Now()); e.Skip(); });
             button->Bind(wxEVT_LEFT_UP,[this,i](wxMouseEvent& e){ engine_.button(i,false,Now()); e.Skip(); });
             button->Bind(wxEVT_BUTTON, [this, i](wxCommandEvent&) {
-                engine_.button(i,true,Now());
-                engine_.button(i,false,Now());
                 SetStatus(wxString::Format("BUTTON %d TRIGGERED",i+1));
             });
             buttons->Add(button, 1, i == 2 ? 0 : wxRIGHT, 8);
