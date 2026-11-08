@@ -258,6 +258,8 @@ private:
             return;
         }
         profile_ = proposed;
+        EditAssignments(encoderAssignments_[i], "Encoder assignments");
+        engine_.set_encoder(i, encoderAssignments_[i], state_.rgbw[i]);
         encoderLabels_[i]->SetLabel(wxString::FromUTF8(newLabel));
         StateChanged();
     }
@@ -289,6 +291,9 @@ private:
             }
             profile_ = proposed;
         }
+        faderConfig_.grandmaster = profile_.fader_role == brasscue::FaderRole::Grandmaster;
+        if (!faderConfig_.grandmaster) EditAssignments(faderConfig_.assignments, "Fader assignments");
+        engine_.configure_fader(faderConfig_);
         StateChanged();
     }
 
@@ -305,6 +310,17 @@ private:
         action.SetSelection(static_cast<int>(profile_.button_actions[i]));
         if (action.ShowModal() == wxID_OK)
             profile_.button_actions[i] = static_cast<brasscue::ButtonAction>(action.GetSelection());
+        EditAssignments(buttonConfigs_[i].assignments, "Button assignments");
+        wxArrayString modes; modes.Add("Toggle"); modes.Add("Flash");
+        wxSingleChoiceDialog mode(this, "Button mode", "Button editor", modes);
+        mode.SetSelection(buttonConfigs_[i].mode == brasscue::ButtonMode::Toggle ? 0 : 1);
+        if (mode.ShowModal() == wxID_OK) buttonConfigs_[i].mode = mode.GetSelection() == 0 ? brasscue::ButtonMode::Toggle : brasscue::ButtonMode::Flash;
+        long fadeIn = wxGetNumberFromUser("Fade in (ms)", "ms", "Button editor", buttonConfigs_[i].fade_in_ms, 0, 60000, this);
+        if (fadeIn >= 0) buttonConfigs_[i].fade_in_ms = static_cast<unsigned>(fadeIn);
+        long fadeOut = wxGetNumberFromUser("Fade out (ms)", "ms", "Button editor", buttonConfigs_[i].fade_out_ms, 0, 60000, this);
+        if (fadeOut >= 0) buttonConfigs_[i].fade_out_ms = static_cast<unsigned>(fadeOut);
+        buttonConfigs_[i].kill = wxMessageBox("Enable Kill mode?", "Button editor", wxYES_NO | wxICON_QUESTION, this) == wxYES;
+        engine_.configure_button(i, buttonConfigs_[i]);
     }
 
     void EditScreen() {
@@ -321,6 +337,30 @@ private:
         SetStatus("SCREEN PROFILE UPDATED");
     }
 
+    bool EditAssignments(std::vector<brasscue::Assignment>& entries, const wxString& title) {
+        wxString initial;
+        for (const auto& a : entries)
+            initial += wxString::Format("%u.%u = %u\n", unsigned(a.address.universe), unsigned(a.address.channel), unsigned(a.value));
+        wxTextEntryDialog dlg(this, "One assignment per line: universe.channel = value (0-255)", title, initial, wxOK | wxCANCEL | wxTE_MULTILINE);
+        if (dlg.ShowModal() != wxID_OK) return false;
+        std::vector<brasscue::Assignment> proposed;
+        wxStringTokenizer lines(dlg.GetValue(), "\n");
+        while (lines.HasMoreTokens()) {
+            wxString line = lines.GetNextToken().Trim(true).Trim(false);
+            if (line.empty()) continue;
+            unsigned uni=0, channel=0, value=0;
+            char trailing=0;
+            if (std::sscanf(line.ToStdString().c_str(), "%u.%u = %u %c", &uni, &channel, &value, &trailing) != 3 || uni<1 || uni>32768 || channel<1 || channel>512 || value>255) {
+                wxMessageBox("Invalid assignment: " + line, title, wxOK | wxICON_ERROR, this);
+                return false;
+            }
+            proposed.push_back({{static_cast<std::uint16_t>(uni),static_cast<std::uint16_t>(channel)},static_cast<std::uint8_t>(value)});
+        }
+        try { brasscue::validate(proposed); }
+        catch (const std::exception& e) { wxMessageBox(wxString::FromUTF8(e.what()), title, wxOK | wxICON_ERROR, this); return false; }
+        entries = std::move(proposed);
+        return true;
+    }
     void Nudge(int channel, int change) {
         const int current = state_.rgbw[static_cast<std::size_t>(channel)];
         const auto value = static_cast<std::uint8_t>((std::max)(0, (std::min)(255, current + change)));
