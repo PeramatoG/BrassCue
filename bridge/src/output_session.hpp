@@ -22,6 +22,11 @@ class OutputSession {
         stop();
         target_ = std::move(next);
     }
+    void enable(const ResolvedNetwork &network) {
+        auto next = std::make_unique<UdpTarget>(network);
+        stop();
+        target_ = std::move(next);
+    }
     template <class Send> void update(DmxFrames frames, Send send) {
         for (const auto &old : last_)
             if (!frames.count(old.first))
