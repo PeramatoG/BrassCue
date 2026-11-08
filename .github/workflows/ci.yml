@@ -74,8 +74,7 @@ jobs:
       - run: cmake --build build --parallel 4
       - run: xvfb-run -a ctest --test-dir build --output-on-failure --no-tests=error
 
-  windows-webview-dependencies:
-    if: github.event_name == 'workflow_dispatch'
+  windows-webview:
     runs-on: windows-latest
     timeout-minutes: 30
     env:
@@ -112,3 +111,10 @@ jobs:
             ${{ steps.vcpkg.outputs.root }}/installed
             ${{ steps.vcpkg.outputs.root }}/downloads
           key: windows-wxwidgets-webview-${{ steps.vcpkg.outputs.revision }}-v1
+      - name: Configure optional Edge panel
+        shell: pwsh
+        run: cmake -S . -B out/web -A x64 "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_TARGET_TRIPLET=x64-windows -DBRASSCUE_BUILD_GUI=ON -DBRASSCUE_ENABLE_WEB_PANEL=ON -DBUILD_TESTING=ON
+      - run: cmake --build out/web --config Debug --parallel 4
+      - run: ctest --test-dir out/web -C Debug --output-on-failure --no-tests=error
+      - run: cmake --build out/web --config Release --parallel 4
+      - run: ctest --test-dir out/web -C Release --output-on-failure --no-tests=error
