@@ -30,8 +30,9 @@ Save writes a sibling `.tmp`, closes it, then atomically replaces the destinatio
 with platform rename/MoveFileEx. An existing `.tmp` causes a visible error rather
 than overwriting it. A failed load leaves the active profile and output unchanged.
 Canceling any editor leaves configuration unchanged. Configuration edits retain
-raw encoder/fader values and reset button cues; opening/reset starts live values
-from defaults and disables output.
+raw encoder/fader values and reset button cues; GUI opening/reset starts live values
+from defaults and disables output. Console `load` preserves current positions and
+an explicitly enabled `--target`; the profile cannot silently change that destination.
 
 Default SALA 100/50/0 are Toggle+Kill, zero fade times, on provisional patch 1.5.
 That address is editable configuration, not a hardware property. Save / Save as

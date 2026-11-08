@@ -77,7 +77,10 @@ dip below 50 during a crossfade before settling. This is the same HTP rule as
 all other overlaps, not a special LTP room override. Time comes from an injected
 millisecond argument; frontends use a monotonic clock. Reconfiguring a profile
 preserves raw encoder/fader positions but resets button envelopes. Opening or
-resetting a profile starts RGBW at zero, master at 255 and network OFF.
+resetting a profile in the GUI starts RGBW at zero, master at 255 and network OFF.
+The console `load` command is a live configuration edit: it preserves raw control
+positions and the explicit `--target` destination; profile IP preferences never
+redirect CLI output. Retired patch addresses still follow the cleanup policy.
 
 ## Output lifetime
 
