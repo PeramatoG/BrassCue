@@ -84,13 +84,24 @@ unsigned parse_uint(const std::string &text, unsigned max) {
     return static_cast<unsigned>(number);
 }
 
-void show(const brasscue::State &state) {
+void show(const brasscue::ControllerSession &session) {
+    const auto &state = session.state();
+    const auto frames = session.engine().render(now_ms());
     std::cout << "Raw RGBW:";
-    for (const auto value : state.rgbw)
-        std::cout << " " << static_cast<int>(value);
-    std::cout << " | Grandmaster: " << static_cast<int>(state.master) << " | Output RGBW:";
-    for (const auto value : state.rgbw)
-        std::cout << " " << static_cast<int>(brasscue::apply_master(value, state.master));
+    for (auto value : state.rgbw)
+        std::cout << " " << int(value);
+    std::cout << (session.profile().fader.grandmaster ? " | Grandmaster: " : " | Patch fader: ")
+              << int(state.master) << " | Output RGBW:";
+    // For a fan-out patch, monitor the first address per encoder. Values come
+    // from the final merged frame, including target scaling, cues and fader role.
+    for (const auto &patch : session.profile().encoders) {
+        unsigned value = 0;
+        if (!patch.empty()) {
+            const auto address = patch.front().address;
+            value = frames.at(address.universe).at(address.channel - 1);
+        }
+        std::cout << " " << value;
+    }
     std::cout << "\n";
 }
 
@@ -146,7 +157,7 @@ int run_serial(const std::string &port, OutputSession *udp, const std::string &t
                     std::cout << "Button " << event.index << (event.value ? " DOWN\n" : " UP\n");
                 }
                 if (session.event(event, ignore_gm, now_ms())) {
-                    show(state);
+                    show(session);
                     serial.send(brasscue::serialize_state(state));
                     if (udp) {
                         udp->send(session.engine(), now_ms());
@@ -216,9 +227,8 @@ int run_cli(int argc, char **argv) {
 
         brasscue::ControllerSession session;
         session.configure(cli_profile(universe));
-        const auto &state = session.state();
         usage();
-        show(state);
+        show(session);
 
         auto emit = [&] {
             if (!udp) {
@@ -245,12 +255,12 @@ int run_cli(int argc, char **argv) {
                 continue;
             }
             if (command == "show") {
-                show(state);
+                show(session);
                 continue;
             }
-            if (command == "load" && (input >> value) && !(input >> trailing)) {
+            if (command == "load" && std::getline(input >> std::ws, value) && !value.empty()) {
                 try {
-                    session.configure(brasscue::load_profile(value));
+                    session.configure(brasscue::load_profile(std::filesystem::u8path(value)));
                     emit();
                 } catch (const std::exception &e) {
                     std::cout << "Profile error: " << e.what() << "\n";
@@ -283,7 +293,7 @@ int run_cli(int argc, char **argv) {
                     const auto channel = std::string("rgbw").find(command[0]);
                     session.encoder(channel, v);
                 }
-                show(state);
+                show(session);
                 emit();
             } catch (const std::exception &ex) {
                 std::cout << "Invalid value: " << ex.what() << "\n";

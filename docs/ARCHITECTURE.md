@@ -47,7 +47,7 @@ Core never includes wxWidgets or Arduino. CMake registers sources explicitly.
 Visible universe 1..32768 converts to wire Port-Address 0..32767 only in packet
 serialization. Channel 1..512 indexes a full 512-slot frame. CLI `--universe 0`
 retains its historical wire meaning; it sets the default RGBW and room patch to
-visible universe 1. Loading a profile replaces that default patch.
+visible universe 1. Loading a profile replaces that default patch. In the console, `load <path>` consumes the remainder of the line as a UTF-8 path, including spaces (no quotes required). The historical `show` output monitors the first patched address of each encoder from the final merged engine frame; it does not assume targets are 255 or the fader is a GM.
 
 Each control has up to 512 distinct addresses and independent 8-bit target
 values. Duplicates within a control are rejected. Between controls, highest takes

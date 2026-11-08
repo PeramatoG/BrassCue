@@ -4,10 +4,29 @@ import socket
 import subprocess
 import sys
 import time
+import tempfile
+from pathlib import Path
 exe = sys.argv[1]
 r = subprocess.run([exe, '--simulate'], input='r 255\ng 128\nb 64\nw 20\nm 128\nquit\n', text=True, capture_output=True, check=True, timeout=10)
 if 'Output RGBW: 128 64 32 10' not in r.stdout or 'network disabled' not in r.stdout:
     raise RuntimeError(r.stdout)
+with tempfile.TemporaryDirectory() as folder:
+    profile = Path(folder) / 'profile with spaces.bcue'
+    profile.write_text("""BRASSCUE 1
+"cli-test" "CLI patch test" "compact-three-column-v1"
+"R" 1 1 1 128
+"G" 1 1 2 255
+"B" 1 1 3 255
+"W" 1 1 4 255
+"PATCH" 0 1 1 5 200
+"ONE" 0 1 0 0 0
+"TWO" 0 1 0 0 0
+"THREE" 0 1 0 0 0
+"LEVELS" 1 1 "127.0.0.1" 0
+""", encoding='utf-8')
+    r = subprocess.run([exe, '--simulate'], input=f'load {profile}\nr 255\nm 128\nshow\nquit\n', text=True, capture_output=True, check=True, timeout=10)
+    if 'Profile error:' in r.stdout or 'Patch fader: 128 | Output RGBW: 128 0 0 0' not in r.stdout:
+        raise RuntimeError(r.stdout)
 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
     sock.bind(('127.0.0.1', 6454))
     sock.settimeout(3)
