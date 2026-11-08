@@ -51,13 +51,15 @@ Output refreshes at approximately 25 Hz while enabled; normal stop attempts zero
 
 The optional wxWidgets GUI has a three-column physical layout, rotary RGBW
 controls, vertical fader, temporary encoder/GM readout and configurable TFT.
-The default SALA 100/50/0 buttons are exclusive Toggle cues on provisional
-patch 1.5; labels, targets, Flash/Toggle, Kill and fades are editable.
+The default SALA 100/50/0 buttons are exclusive internal GM presets (255/128/0),
+synchronized with the virtual fader, display and output. Explicit DMX cues remain
+an alternative; labels, targets, Flash/Toggle, Kill and fades are editable.
+An opt-in local wxWebView panel shares the C++ state and retains native fallback.
 Multi-universe profiles can be imported/exported without saving live output.
 GUI starts in simulation with Art-Net OFF.
 
 See [GUI builds and manual checks](docs/GUI.md),
 [architecture and output contracts](docs/ARCHITECTURE.md),
-[portable profile v1](docs/PROFILES.md), and
+[portable profiles v2 / v1 migration](docs/PROFILES.md), and
 [BC1 protocol](docs/SERIAL_PROTOCOL.md). Python 3 runs the CLI integration check;
 all C++ test checks remain active in Debug and Release.

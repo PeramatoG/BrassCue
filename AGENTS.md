@@ -23,10 +23,13 @@
 - Windows CLI BC1 and profile patching are implemented; GUI COM, physical display drivers and stage-readiness are not verified.
 
 ## GUI direction
-- Use wxWidgets (wx::core / wx::base) from the user's existing classic vcpkg x64-windows installation.
+- Native GUI uses wx::core / wx::base; BRASSCUE_ENABLE_WEB_PANEL optionally requires wx::webview. Use the user's existing classic vcpkg x64-windows installation.
 - Preserve headless C++ core/CLI targets and CI without wxWidgets by keeping GUI optional in CMake.
 - Design Windows UI with a restrained dark palette and brass accents; favor legibility, resizing and accessible controls over decoration.
 - Keep calculations, Art-Net framing and protocol semantics in shared testable modules, not wx event callbacks.
+- C++ owns effective GM/RGBW, preset ownership, circular gesture math and snapshot diffs. JS is local input/DOM presentation only; retain native fallback and block external navigation.
+- Write profiles v2; import v1 explicitly as DMX actions without reinterpreting SALA labels. New SALA defaults are internal GM presets, not channel 1.5.
+- Broadcast requires an active explicit IPv4 NIC and its real mask; bind source/interface, keep Auto unicast and stop output when the route changes. Never test broadcast on a real network implicitly.
 - GUI simulation must not silently claim to be connected to the Uno: USB COM integration is future work.
 - Do not introduce wxWidgets into the portable serial/core unit tests.
 

@@ -1,42 +1,58 @@
-# Portable profiles v1
+# Portable profiles v2
 
-A `.bcue` file is UTF-8 text with an ordered, versioned grammar. It is configuration,
-not a snapshot of live output. The canonical schema is `ControlProfile` and the
-strict parser/serializer in `bridge/src/profile_io.cpp`. No extra third-party
-JSON library is required.
+A `.bcue` file is ordered UTF-8 configuration, never live output. `ControlProfile`
+and `profile_io.cpp` define the schema. The writer emits **BRASSCUE 2**; the reader
+accepts versions 1 and 2. No third-party JSON library is needed.
 
-Records in order:
+## Ordered records
 
-1. `BRASSCUE 1`
+1. `BRASSCUE 2`
 2. Quoted ID, name, layout ID (`compact-three-column-v1`).
-3. Four encoder records: quoted label followed by an assignment list.
-4. Fader record: quoted label, GM boolean (0/1), assignment list.
-5. Three button records: quoted label, mode (0 toggle / 1 flash), Kill boolean,
-   fade-in ms, fade-out ms, assignment list.
-6. Quoted TFT title, view (0 color / 1 levels), units (0 DMX / 1 percent),
-   quoted target IPv4, broadcast permission boolean.
+3. Four encoder records: quoted label, DMX assignment list.
+4. Fader: quoted label, GM boolean, DMX assignment list.
+5. Three buttons, each: quoted label, mode (0 Toggle / 1 Flash), Kill boolean,
+   fade-in ms, fade-out ms, action (0 DmxCue / 1 SetControlValues), DMX assignment
+   list, then internal control assignment list.
+6. Quoted TFT title, view (0 Color / 1 Levels), units (0 DMX / 1 Percent), quoted
+   unicast IPv4 preference, broadcast boolean, quoted interface ID (empty = Auto).
 
-An assignment list is a count followed by that many `universe channel target`
-triples. For example `3 1 23 255 2 8 128 3 128 0` represents
-`1.23=255`, `2.8=128`, `3.128=0`. Targets are always stored in DMX bytes.
-Strings use double quotes and backslash escaping for quotes/backslashes.
-The parser rejects trailing tokens, missing fields, unsupported versions,
-invalid integers, duplicate addresses, unsupported modes/layouts, labels above
-128 bytes, line breaks/NULs, more than 512 assignments per control, fades above
-60000 ms and files above 256 KiB. Universe/channel zero is invalid.
+A DMX list is a count followed by `universe channel byte` triples. An internal
+list is a count followed by `target byte` pairs; targets are 0 Grandmaster,
+1 Red, 2 Green, 3 Blue, 4 White. Each target can occur once, at most five entries.
+An internal action requires at least one internal target and no DMX assignments;
+a DMX action has no internal targets. “Add all RGBW” expands four independent
+rows. Displayed units never change stored bytes unless that value cell is edited.
+Strings use double quotes with escaped quotes/backslashes.
 
-Load into a candidate; only successful validation replaces the current profile.
-Save writes a sibling `.tmp`, closes it, then atomically replaces the destination
-with platform rename/MoveFileEx. An existing `.tmp` causes a visible error rather
-than overwriting it. A failed load leaves the active profile and output unchanged.
-Canceling any editor leaves configuration unchanged. Configuration edits retain
-raw encoder/fader values and reset button cues; GUI opening/reset starts live values
-from defaults and disables output. Console `load` preserves current positions and
-an explicitly enabled `--target`; the profile cannot silently change that destination.
+The parser rejects trailing tokens, missing fields, unsupported versions, invalid
+UTF-8, integers, duplicate addresses/targets, actions, modes or layouts. Limits:
+128 bytes per label/ID, no NUL/line breaks, 512 DMX assignments per control,
+60000 ms per fade, 256 KiB per file, universe 1..32768, channel 1..512, byte 0..255.
+The interface ID is a preference; loading never silently opens a socket or picks a
+replacement NIC. Resolve it against current interfaces before enabling output.
 
-Default SALA 100/50/0 are Toggle+Kill, zero fade times, on provisional patch 1.5.
-That address is editable configuration, not a hardware property. Save / Save as
-also serve export; Open serves import. The file chooser initially uses the
-platform user-data directory under `profiles`. Startup does not auto-load a file.
-An asterisk in the window title indicates unsaved configuration changes; closing,
-opening or restoring defaults prompts before discarding them.
+## Version 1 migration
+
+Version 1 lacks action/control-list fields and the interface ID. Every v1 button
+is explicitly imported as **DmxCue** with its original DMX patch, mode, Kill and
+fade times. No label-based inference occurs. In particular old SALA labels on
+patch 1.5 remain DMX cues. Saving that imported profile writes v2 with those same
+semantics. `bridge/tests/fixtures/room-v1.bcue` is a literal old-format fixture.
+New defaults use internal GM presets 255/128/0, Toggle+Kill, zero fades. They do
+not write channel 1.5.
+
+## Transactions and live state
+
+Load validates a candidate before replacement. Save writes a sibling `.tmp`,
+closes it, then atomically replaces the destination with rename/MoveFileEx. An
+existing `.tmp` is an error; a failed load leaves the profile intact. Editors own
+local drafts, including inactive action tables; Cancel has no session effect.
+Accepting a configuration edit preserves effective controls and resets button
+ownership/transitions. GUI open/reset starts RGBW zero, GM 255, output OFF.
+Console `load` preserves current controls and its explicit `--target`; profile
+network preferences cannot redirect it.
+
+No active selection, fade progress, effective/physical control values or network
+ON state is saved. Startup uses built-in RGBW Compact; files load explicitly.
+Profile menu supports Open/import, Save, Save as/export and Restore defaults.
+An asterisk marks unsaved configuration; discard prompts protect it.
