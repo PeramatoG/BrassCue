@@ -21,7 +21,7 @@ namespace brasscue {
 
 class UdpTarget {
 public:
-    explicit UdpTarget(const std::string& ipv4) {
+    explicit UdpTarget(const std::string& ipv4, bool broadcast = false) {
 #ifdef _WIN32
         WSADATA data{};
         if (WSAStartup(MAKEWORD(2, 2), &data) != 0)
@@ -45,6 +45,17 @@ public:
 #else
         if (socket_ < 0) throw std::runtime_error("Unable to create UDP socket");
 #endif
+        if (broadcast) {
+            const int enabled = 1;
+#ifdef _WIN32
+            if (setsockopt(socket_, SOL_SOCKET, SO_BROADCAST,
+                           reinterpret_cast<const char*>(&enabled), sizeof(enabled)) != 0)
+                throw std::runtime_error("Unable to enable UDP broadcast");
+#else
+            if (setsockopt(socket_, SOL_SOCKET, SO_BROADCAST, &enabled, sizeof(enabled)) != 0)
+                throw std::runtime_error("Unable to enable UDP broadcast");
+#endif
+        }
     }
 
     UdpTarget(const UdpTarget&) = delete;
