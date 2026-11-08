@@ -6,6 +6,9 @@
 #include <wx/filesys.h>
 #include <wx/stdpaths.h>
 #include <wx/webview.h>
+#if defined(__WXMSW__) && !wxUSE_WEBVIEW_EDGE
+#error "Edge support is required: vcpkg install wxwidgets[webview]:x64-windows --classic --recurse"
+#endif
 namespace {
 class WebPanel final : public wxPanel, public WebPanelInterface {
   public:

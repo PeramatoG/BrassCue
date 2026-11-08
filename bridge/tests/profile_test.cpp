@@ -42,6 +42,27 @@ int main() {
         }
         CHECK(rejected);
     }
+    for (unsigned invalid = 0; invalid < 5; ++invalid) {
+        auto candidate = ControlProfile{};
+        auto &button = candidate.buttons[0];
+        if (invalid == 0)
+            button.action = static_cast<ButtonActionKind>(99);
+        if (invalid == 1)
+            button.controls.push_back(button.controls[0]);
+        if (invalid == 2)
+            button.controls[0].target = static_cast<ControlTarget>(99);
+        if (invalid == 3)
+            button.assignments = {{{1, 5}, 255}};
+        if (invalid == 4)
+            button.controls.clear();
+        bool rejected = false;
+        try {
+            validate(candidate);
+        } catch (const std::exception &) {
+            rejected = true;
+        }
+        CHECK(rejected);
+    }
     ControllerSession session;
     const auto before = serialize_profile(session.profile());
     p.encoders[0].push_back(p.encoders[0][0]);

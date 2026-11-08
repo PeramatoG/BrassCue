@@ -39,8 +39,8 @@ class CueButton final : public wxButton {
     }
 
   private:
-    void Press();
-    bool down_ = false, pointer_down_ = false;
+    void Hold(unsigned source, bool down);
+    unsigned holds_ = 0;
     brasscue::ButtonView view_;
     unsigned revision_ = 0;
     std::function<void(bool)> event_;

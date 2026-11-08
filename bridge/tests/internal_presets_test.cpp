@@ -109,6 +109,35 @@ int main() {
     CHECK(patch_session.state().master == 128 && patch_session.fader_value() == 64);
     CHECK(patch_session.engine().render(0)[1][0] == 128 &&
           patch_session.engine().render(0)[2][0] == 25);
+    ControllerSession crossfade;
+    auto timed = crossfade.profile();
+    timed.buttons[1].fade_in_ms = 2000;
+    timed.buttons[0].fade_in_ms = 1000;
+    crossfade.configure(timed);
+    crossfade.button(1, true, 0);
+    crossfade.button(1, false, 0);
+    crossfade.advance(1000);
+    CHECK(crossfade.state().master == 192);
+    crossfade.button(0, true, 1000);
+    crossfade.button(0, false, 1000);
+    CHECK(crossfade.state().master == 192);
+    crossfade.advance(1500);
+    CHECK(crossfade.state().master == 224);
+    crossfade.fader(128, 1500);
+    crossfade.advance(9000);
+    CHECK(crossfade.state().master == 128);
+    timed.buttons[0].mode = ButtonMode::Flash;
+    timed.buttons[0].fade_in_ms = 0;
+    timed.buttons[1].fade_in_ms = 0;
+    timed.buttons[1].kill = false;
+    crossfade.configure(timed);
+    crossfade.fader(80);
+    crossfade.button(0, true, 0);
+    crossfade.button(1, true, 0);
+    crossfade.button(1, false, 0);
+    crossfade.button(0, false, 0);
+    CHECK(crossfade.state().master == 128); // A newer command owns GM after Flash release.
+    CHECK(serialize_state(crossfade.state()).find("128") != std::string::npos);
     ControllerSession mixed;
     auto mixed_profile = mixed.profile();
     auto &cue = mixed_profile.buttons[0];

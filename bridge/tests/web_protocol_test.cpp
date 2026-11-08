@@ -44,7 +44,13 @@ int main() {
         CHECK(!bridge.accept(bad));
     CHECK(!bridge.accept(std::string(257, 'x')));
     CHECK(s.state().master == 128 && presses == 1);
-    CHECK(bridge.accept("BCW1 42 7 edit 5"));
+    CHECK(bridge.accept("BCW1 42 7 button 0 1 0"));
+    CHECK(bridge.accept("BCW1 42 8 button 0 1 1"));
+    const auto held_presses = presses;
+    bridge.reconcile_mouse(false);
+    CHECK(presses == held_presses);
+    CHECK(bridge.accept("BCW1 42 9 button 0 0 0"));
+    CHECK(bridge.accept("BCW1 42 10 edit 5"));
     CHECK(edits == 1);
     bridge.reset(43);
     CHECK(!bridge.ready() && !bridge.accept("BCW1 42 8 fader 0"));

@@ -166,10 +166,13 @@ CueButton::CueButton(wxWindow *parent, std::function<void(bool)> event)
         SetFocus();
         if (!HasCapture())
             CaptureMouse();
-        pointer_down_ = true;
-        Press();
+        Hold(1, true);
     });
-    Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) { Release(); });
+    Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) {
+        Hold(1, false);
+        if (HasCapture())
+            ReleaseMouse();
+    });
     Bind(wxEVT_MOUSE_CAPTURE_LOST, [this](wxMouseCaptureLostEvent &) { Release(false); });
     Bind(wxEVT_KILL_FOCUS, [this](wxFocusEvent &e) {
         Release();
@@ -177,35 +180,40 @@ CueButton::CueButton(wxWindow *parent, std::function<void(bool)> event)
     });
     Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent &e) {
         if (e.GetKeyCode() == WXK_SPACE || e.GetKeyCode() == WXK_RETURN)
-            Press();
+            Hold(e.GetKeyCode() == WXK_SPACE ? 2 : 4, true);
         else
             e.Skip();
     });
     Bind(wxEVT_KEY_UP, [this](wxKeyEvent &e) {
         if (e.GetKeyCode() == WXK_SPACE || e.GetKeyCode() == WXK_RETURN)
-            Release();
+            Hold(e.GetKeyCode() == WXK_SPACE ? 2 : 4, false);
         else
             e.Skip();
     });
     Bind(wxEVT_BUTTON, [this](wxCommandEvent &) {
-        Press();
-        Release();
+        Hold(8, true);
+        Hold(8, false);
     });
 }
-void CueButton::Press() {
-    if (!down_) {
-        down_ = true;
-        event_(true);
-    }
+void CueButton::Hold(unsigned source, bool down) {
+    const bool previous = holds_ != 0;
+    if (down)
+        holds_ |= source;
+    else
+        holds_ &= ~source;
+    if (previous != (holds_ != 0))
+        event_(holds_ != 0);
 }
 void CueButton::CheckPointer() {
-    if (pointer_down_ && !wxGetMouseState().LeftIsDown())
-        Release();
+    if ((holds_ & 1) && !wxGetMouseState().LeftIsDown()) {
+        Hold(1, false);
+        if (HasCapture())
+            ReleaseMouse();
+    }
 }
 void CueButton::Release(bool release_capture) {
-    pointer_down_ = false;
-    if (down_) {
-        down_ = false;
+    if (holds_) {
+        holds_ = 0;
         event_(false);
     }
     if (release_capture && HasCapture())

@@ -41,6 +41,9 @@ class RendererTestApp final : public wxApp {
                 event.Skip();
                 return;
             }
+            if (event.IsError())
+                std::cerr << "DOM query failed at phase " << phase_ << ": " << event.GetString()
+                          << "\n";
             CHECK(!event.IsError());
             const auto result = event.GetString();
             if (result == "ok" || result == "\"ok\"") {
@@ -80,9 +83,9 @@ class RendererTestApp final : public wxApp {
                 return found;
         return nullptr;
     }
-    void Query(const wxString &expression) {
+    void Query(const std::string &expression) {
         pending_ = true;
-        RunPanelScript(*browser_, "(() => { return (" + expression + "); })()", this);
+        RunPanelScript(*browser_, wxString::FromUTF8(expression), this);
     }
     void Tick() {
         CHECK(++ticks_ < 200);

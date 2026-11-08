@@ -1,5 +1,6 @@
 // BrassCue - GPL-3.0. Native asynchronous evaluation preserves CSP without unsafe-eval.
 #include "web_script.hpp"
+#include <cstdint>
 #include <memory>
 #include <wx/weakref.h>
 #ifdef __WXMSW__
@@ -32,7 +33,11 @@ struct _WebKitWebView;
 struct _GAsyncResult;
 struct _GCancellable;
 struct _GObject;
-struct _GError;
+struct _GError {
+    std::uint32_t domain;
+    int code;
+    char *message;
+};
 struct _JSCValue;
 using Ready = void (*)(_GObject *, _GAsyncResult *, void *);
 struct WebKitApi {
@@ -47,6 +52,8 @@ struct WebKitApi {
         reinterpret_cast<char *(*)(_JSCValue *)>(dlsym(RTLD_DEFAULT, "jsc_value_to_string"));
     void (*unref)(void *) = reinterpret_cast<void (*)(void *)>(dlsym(RTLD_DEFAULT,
                                                                      "g_object_unref"));
+    void (*error_free)(_GError *) = reinterpret_cast<void (*)(_GError *)>(dlsym(RTLD_DEFAULT,
+                                                                                "g_error_free"));
     void (*free)(void *) = reinterpret_cast<void (*)(void *)>(dlsym(RTLD_DEFAULT, "g_free"));
 };
 const WebKitApi &Api() {
@@ -56,9 +63,13 @@ const WebKitApi &Api() {
 void Evaluated(_GObject *object, _GAsyncResult *result, void *context) {
     std::unique_ptr<Completion> completion(static_cast<Completion *>(context));
     const auto &api = Api();
-    auto *value = api.finish(reinterpret_cast<_WebKitWebView *>(object), result, nullptr);
+    _GError *error = nullptr;
+    auto *value = api.finish(reinterpret_cast<_WebKitWebView *>(object), result, &error);
     if (!value) {
-        completion->Send(false, "Native WebKit script evaluation failed");
+        completion->Send(false, error && error->message ? wxString::FromUTF8(error->message)
+                                                        : "Native WebKit script evaluation failed");
+        if (error)
+            api.error_free(error);
         return;
     }
     auto *text = api.text(value);
@@ -90,7 +101,7 @@ void RunPanelScript(wxWebView &browser, const wxString &script, void *client_dat
         completion.Send(false, "Edge script submission failed");
 #else
     const auto &api = Api();
-    if (!api.evaluate || !api.finish || !api.text || !api.unref || !api.free) {
+    if (!api.evaluate || !api.finish || !api.text || !api.unref || !api.free || !api.error_free) {
         completion.Send(false,
                         "WebKitGTK 2.40 or newer is required; native controls remain available");
         return;
