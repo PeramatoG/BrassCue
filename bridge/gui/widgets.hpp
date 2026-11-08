@@ -25,7 +25,7 @@ class ColorPreview final : public wxPanel {
   private:
     brasscue::ScreenViewData view_;
 };
-class CueButton final : public wxButton {
+class CueButton final : public wxControl {
   public:
     CueButton(wxWindow *, std::function<void(bool)>);
     void Release(bool release_capture = true);

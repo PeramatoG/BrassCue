@@ -81,7 +81,7 @@ Changing unit presentation does not rewrite untouched target bytes. Button actio
 
 Buttons display only their configured labels. Amber fill/border indicates
 selection, including a selected zero preset; transition styling is subtle.
-ARIA/native accessibility expose selection. Dirty snapshots prevent repeated
+ARIA and the Windows native accessible button expose selection; validate Linux assistive technology manually. Dirty snapshots prevent repeated
 button repaint while an unrelated encoder changes. Wheel remains exactly one
 signed byte step per event. Drag begins without changing a value, supports
 multiple clockwise/counterclockwise turns, wraps angles, ignores center noise/

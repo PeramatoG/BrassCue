@@ -156,9 +156,40 @@ void ColorPreview::SetView(const brasscue::ScreenViewData &view) {
     Refresh();
 }
 CueButton::CueButton(wxWindow *parent, std::function<void(bool)> event)
-    : wxButton(parent, wxID_ANY, ""), event_(std::move(event)) {
+    : wxControl(parent, wxID_ANY, wxDefaultPosition, wxSize(100, 70),
+                wxBORDER_NONE | wxWANTS_CHARS),
+      event_(std::move(event)) {
+    SetCanFocus(true);
+    SetMinSize(FromDIP(wxSize(80, 50)));
+    SetBackgroundStyle(wxBG_STYLE_PAINT);
     SetBackgroundColour(wxColour(43, 48, 56));
     SetForegroundColour(wxColour(238, 232, 219));
+    Bind(wxEVT_PAINT, [this](wxPaintEvent &) {
+        wxAutoBufferedPaintDC dc(this);
+        const bool fade = view_.phase.rfind("FADE", 0) == 0;
+        const wxColour fill = view_.selected ? wxColour(78, 60, 32) : wxColour(43, 48, 56);
+        dc.SetBackground(wxBrush(fill));
+        dc.Clear();
+        dc.SetBrush(wxBrush(fill));
+        dc.SetPen(wxPen(view_.selected ? wxColour(219, 169, 79)
+                        : fade         ? wxColour(149, 116, 63)
+                                       : wxColour(85, 83, 76),
+                        2));
+        const auto size = GetClientSize();
+        dc.DrawRoundedRectangle(1, 1, std::max(1, size.x - 2), std::max(1, size.y - 2), 4);
+        dc.SetTextForeground(view_.selected ? wxColour(255, 196, 93) : wxColour(238, 232, 219));
+        dc.SetFont(GetFont());
+        dc.DrawLabel(GetLabel(), GetClientRect(), wxALIGN_CENTER);
+        if (HasFocus()) {
+            dc.SetBrush(*wxTRANSPARENT_BRUSH);
+            dc.SetPen(wxPen(wxColour(255, 196, 93), 1, wxPENSTYLE_DOT));
+            dc.DrawRectangle(5, 5, std::max(1, size.x - 10), std::max(1, size.y - 10));
+        }
+    });
+    Bind(wxEVT_SET_FOCUS, [this](wxFocusEvent &e) {
+        Refresh(false);
+        e.Skip();
+    });
 #if defined(__WXMSW__) && wxUSE_ACCESSIBILITY
     SetAccessible(new CueAccessible(this));
 #endif
@@ -176,6 +207,7 @@ CueButton::CueButton(wxWindow *parent, std::function<void(bool)> event)
     Bind(wxEVT_MOUSE_CAPTURE_LOST, [this](wxMouseCaptureLostEvent &) { Release(false); });
     Bind(wxEVT_KILL_FOCUS, [this](wxFocusEvent &e) {
         Release();
+        Refresh(false);
         e.Skip();
     });
     Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent &e) {
@@ -227,10 +259,6 @@ void CueButton::SetView(const brasscue::ButtonView &view) {
         SetName(wxString::FromUTF8(view.label));
     }
     if (view_.selected != view.selected || view_.phase != view.phase) {
-        SetBackgroundColour(view.selected                      ? wxColour(78, 60, 32)
-                            : view.phase.rfind("FADE", 0) == 0 ? wxColour(57, 47, 34)
-                                                               : wxColour(43, 48, 56));
-        SetForegroundColour(view.selected ? wxColour(255, 196, 93) : wxColour(238, 232, 219));
         SetHelpText(view.phase == "FADE IN"    ? "Transitioning in"
                     : view.phase == "FADE OUT" ? "Transitioning out"
                     : view.selected            ? "Selected"
@@ -238,6 +266,7 @@ void CueButton::SetView(const brasscue::ButtonView &view) {
     }
     view_ = view;
     ++revision_;
+    Refresh(false);
 #if defined(__WXMSW__) && wxUSE_ACCESSIBILITY
     wxAccessible::NotifyEvent(wxACC_EVENT_OBJECT_STATECHANGE, this, wxOBJID_CLIENT, 0);
 #endif
