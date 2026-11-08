@@ -1,4 +1,7 @@
 #include "../src/bridge_core.hpp"
+#include "../src/controller_profile.hpp"
+#include <wx/textdlg.h>
+#include <wx/choicdlg.h>
 #include "../src/artnet_udp.hpp"
 
 #include <wx/wx.h>
@@ -68,7 +71,11 @@ private:
                                         clamp(scaled(2) + w))));
         dc.DrawRoundedRectangle(x, y, side, side, 8);
     }
+    brasscue::ControlProfile profile_;
     brasscue::State state_;
+    std::array<wxStaticText*, 4> encoderLabels_{};
+    std::array<wxButton*, 3> buttons_{};
+    wxStaticText* masterLabel_ = nullptr;
 };
 
 class MainFrame final : public wxFrame {
@@ -105,7 +112,10 @@ public:
             card->SetBackgroundColour(kRaised);
             auto* column = new wxBoxSizer(wxVERTICAL);
             auto* row = new wxBoxSizer(wxHORIZONTAL);
-            row->Add(MakeLabel(card, names[i], 11, true), 0, wxALIGN_CENTER_VERTICAL);
+            encoderLabels_[i] = MakeLabel(card, names[i], 11, true);
+            row->Add(encoderLabels_[i], 0, wxALIGN_CENTER_VERTICAL);
+            card->Bind(wxEVT_RIGHT_UP, [this, i](wxMouseEvent&) { EditEncoder(i); });
+            encoderLabels_[i]->Bind(wxEVT_RIGHT_UP, [this, i](wxMouseEvent&) { EditEncoder(i); });
             row->AddStretchSpacer();
             values_[i] = MakeLabel(card, "000 / 00", 12, true);
             values_[i]->SetForegroundColour(kBrass);
@@ -135,7 +145,10 @@ public:
         master->SetBackgroundColour(kRaised);
         auto* masterBox = new wxBoxSizer(wxVERTICAL);
         auto* masterHeading = new wxBoxSizer(wxHORIZONTAL);
-        masterHeading->Add(MakeLabel(master, "GRANDMASTER", 12, true), 0);
+        masterLabel_ = MakeLabel(master, "GRANDMASTER", 12, true);
+        masterHeading->Add(masterLabel_, 0);
+        master->Bind(wxEVT_RIGHT_UP, [this](wxMouseEvent&) { EditMaster(); });
+        masterLabel_->Bind(wxEVT_RIGHT_UP, [this](wxMouseEvent&) { EditMaster(); });
         masterHeading->AddStretchSpacer();
         masterValue_ = MakeLabel(master, "255 / FF", 12, true);
         masterValue_->SetForegroundColour(kBrass);
@@ -153,6 +166,8 @@ public:
         auto* buttons = new wxBoxSizer(wxHORIZONTAL);
         for (int i = 0; i < 3; ++i) {
             auto* button = MakeButton(controls, wxString::Format("BUTTON %d", i + 1));
+            buttons_[i] = button;
+            button->Bind(wxEVT_RIGHT_UP, [this, i](wxMouseEvent&) { EditButton(i); });
             button->Bind(wxEVT_BUTTON, [this, i](wxCommandEvent&) {
                 SetStatus(wxString::Format("VIRTUAL BUTTON %d PRESSED  /  UNASSIGNED", i + 1));
             });
@@ -166,6 +181,7 @@ public:
         auto* outputBox = new wxBoxSizer(wxVERTICAL);
         outputBox->Add(MakeLabel(output, "OUTPUT MONITOR", 13, true), 0, wxALL, 16);
         preview_ = new ColorPreview(output);
+        preview_->Bind(wxEVT_RIGHT_UP, [this](wxMouseEvent&) { EditScreen(); });
         outputBox->Add(preview_, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 16);
         outputValues_ = MakeLabel(output, "", 10);
         outputBox->Add(outputValues_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 16);
@@ -197,6 +213,87 @@ public:
     }
 
 private:
+    void EditEncoder(int i) {
+        auto& label = profile_.encoder_labels[static_cast<std::size_t>(i)];
+        wxTextEntryDialog name(this, "Encoder label", "Edit encoder", wxString::FromUTF8(label));
+        if (name.ShowModal() != wxID_OK) return;
+        const auto newLabel = name.GetValue().ToStdString();
+        if (newLabel.empty()) return;
+        wxNumberEntryDialog channel(this, "DMX channel (1-512)", "Channel",
+                                    "Encoder assignment", profile_.dmx_channels[i], 1, 512);
+        if (channel.ShowModal() != wxID_OK) return;
+        auto proposed = profile_;
+        proposed.encoder_labels[i] = newLabel;
+        proposed.dmx_channels[i] = static_cast<std::uint16_t>(channel.GetValue());
+        if (!brasscue::valid_profile(proposed)) {
+            wxMessageBox("DMX channels must be unique and valid.", "Invalid assignment",
+                         wxOK | wxICON_WARNING, this);
+            return;
+        }
+        profile_ = proposed;
+        encoderLabels_[i]->SetLabel(wxString::FromUTF8(newLabel));
+        StateChanged();
+    }
+
+    void EditMaster() {
+        wxTextEntryDialog name(this, "Fader label", "Edit fader",
+                               wxString::FromUTF8(profile_.fader_label));
+        if (name.ShowModal() != wxID_OK || name.GetValue().empty()) return;
+        profile_.fader_label = name.GetValue().ToStdString();
+        masterLabel_->SetLabel(name.GetValue());
+        wxArrayString choices;
+        choices.Add("Grandmaster");
+        choices.Add("DMX channel");
+        wxSingleChoiceDialog mode(this, "Fader role", "Edit fader", choices);
+        mode.SetSelection(profile_.fader_role == brasscue::FaderRole::Grandmaster ? 0 : 1);
+        if (mode.ShowModal() != wxID_OK) return;
+        if (mode.GetSelection() == 0) profile_.fader_role = brasscue::FaderRole::Grandmaster;
+        else {
+            wxNumberEntryDialog channel(this, "DMX channel (1-512)", "Channel",
+                                        "Fader assignment", profile_.fader_dmx_channel, 1, 512);
+            if (channel.ShowModal() != wxID_OK) return;
+            auto proposed = profile_;
+            proposed.fader_role = brasscue::FaderRole::DmxChannel;
+            proposed.fader_dmx_channel = static_cast<std::uint16_t>(channel.GetValue());
+            if (!brasscue::valid_profile(proposed)) {
+                wxMessageBox("Channel conflicts with an encoder.", "Invalid assignment",
+                             wxOK | wxICON_WARNING, this);
+                return;
+            }
+            profile_ = proposed;
+        }
+        StateChanged();
+    }
+
+    void EditButton(int i) {
+        wxTextEntryDialog name(this, "Button label", "Edit button",
+                               wxString::FromUTF8(profile_.button_labels[i]));
+        if (name.ShowModal() != wxID_OK || name.GetValue().empty()) return;
+        profile_.button_labels[i] = name.GetValue().ToStdString();
+        buttons_[i]->SetLabel(name.GetValue());
+        wxArrayString actions;
+        actions.Add("Blackout"); actions.Add("Full"); actions.Add("Recall preset");
+        actions.Add("Store preset"); actions.Add("Unassigned");
+        wxSingleChoiceDialog action(this, "Button action", "Edit button", actions);
+        action.SetSelection(static_cast<int>(profile_.button_actions[i]));
+        if (action.ShowModal() == wxID_OK)
+            profile_.button_actions[i] = static_cast<brasscue::ButtonAction>(action.GetSelection());
+    }
+
+    void EditScreen() {
+        wxTextEntryDialog title(this, "Screen title", "Edit screen",
+                                wxString::FromUTF8(profile_.screen_title));
+        if (title.ShowModal() != wxID_OK || title.GetValue().empty()) return;
+        profile_.screen_title = title.GetValue().ToStdString();
+        wxArrayString views;
+        views.Add("Color mix"); views.Add("Levels");
+        wxSingleChoiceDialog view(this, "Display mode", "Edit screen", views);
+        view.SetSelection(static_cast<int>(profile_.screen_view));
+        if (view.ShowModal() == wxID_OK)
+            profile_.screen_view = static_cast<brasscue::ScreenView>(view.GetSelection());
+        SetStatus("SCREEN PROFILE UPDATED");
+    }
+
     void Nudge(int channel, int change) {
         const int current = state_.rgbw[static_cast<std::size_t>(channel)];
         const auto value = static_cast<std::uint8_t>((std::max)(0, (std::min)(255, current + change)));
@@ -212,7 +309,7 @@ private:
             const auto value = state_.rgbw[i];
             values_[i]->SetLabel(wxString::Format("%03u / %02X", unsigned(value), unsigned(value)));
         }
-        masterValue_->SetLabel(wxString::Format("%03u / %02X",
+        masterValue_->SetLabel(wxString::Format("%03u / %04X",
                                                 unsigned(state_.master), unsigned(state_.master)));
         outputValues_->SetLabel(wxString::Format("DMX 1-4: %u  %u  %u  %u",
             unsigned(brasscue::apply_master(state_.rgbw[0], state_.master)),
