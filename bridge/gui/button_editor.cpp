@@ -47,14 +47,14 @@ class ButtonDialog final : public wxDialog {
                                    wxSP_ARROW_KEYS | wxTE_PROCESS_ENTER, 0, 60,
                                    b.fade_in_ms / 1000.0, 0.1);
         in_->SetDigits(1);
-        initial_in_ = in_->GetValue();
+        initial_in_ = ReadFadeSeconds(*in_);
         timings->Add(in_);
         timings->Add(new wxStaticText(this, wxID_ANY, "Fade out (s)"));
         out_ = new wxSpinCtrlDouble(this, FadeOutId, "", wxDefaultPosition, wxDefaultSize,
                                     wxSP_ARROW_KEYS | wxTE_PROCESS_ENTER, 0, 60,
                                     b.fade_out_ms / 1000.0, 0.1);
         out_->SetDigits(1);
-        initial_out_ = out_->GetValue();
+        initial_out_ = ReadFadeSeconds(*out_);
         for (auto *field : {in_, out_})
             field->Bind(wxEVT_TEXT_ENTER, [this, field](wxCommandEvent &) {
                 try {
