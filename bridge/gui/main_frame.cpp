@@ -51,7 +51,7 @@ class MainFrame final : public wxFrame {
         BindEdit(masterLabel_, 4);
         BindEdit(digits_, 4);
         fader_->Bind(wxEVT_SLIDER, [this](wxCommandEvent &e) {
-            session_.fader(e.GetInt());
+            session_.fader(e.GetInt(),Now());
             RefreshState();
         });
         front->Add(left, 1, wxEXPAND | wxALL, 8);
@@ -61,7 +61,7 @@ class MainFrame final : public wxFrame {
             encoderLabels_[i] = Label(this, "");
             row->Add(encoderLabels_[i], 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 4);
             knobs_[i] = new EncoderKnob(this, [this, i](int v) {
-                session_.encoder(i, v);
+                session_.encoder(i, v,Now());
                 display_.encoder_changed(i, v, Now());
                 RefreshState();
             });
@@ -164,6 +164,7 @@ class MainFrame final : public wxFrame {
         Bind(wxEVT_TIMER, [this](wxTimerEvent &) {
             for (auto *button : buttons_)
                 button->CheckPointer();
+            session_.advance(Now());
             RefreshState();
             Send();
         });
@@ -203,13 +204,15 @@ class MainFrame final : public wxFrame {
     void RefreshState() {
         const auto &p = session_.profile();
         const auto &s = session_.state();
+        if(fader_->GetValue()!=s.master)fader_->SetValue(s.master);
+        for(int i=0;i<4;++i)knobs_[i]->SetValue(s.rgbw[i]);
         for (int i = 0; i < 4; ++i)
             encoderLabels_[i]->SetLabel(
                 wxString::FromUTF8(p.encoder_labels[i]) +
                 wxString::Format("  %u%%", brasscue::to_percent(s.rgbw[i])));
         for (int i = 0; i < 3; ++i)
             buttons_[i]->SetLabel(wxString::FromUTF8(p.button_labels[i]) + "\n" +
-                                  wxString::FromUTF8(session_.engine().button_status(i, Now())));
+                                  wxString::FromUTF8(session_.button_status(i, Now())));
         display_.set_master(p.fader.grandmaster ? s.master : 255);
         digits_->SetLabel(wxString::FromUTF8(display_.text(Now())));
         preview_->SetState(s, p);

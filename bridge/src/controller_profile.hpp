@@ -23,10 +23,13 @@ struct ControlProfile {
     ValueDisplay units = ValueDisplay::Percent;
     std::string target_ip = "127.0.0.1";
     bool allow_broadcast = false;
+    std::string network_interface_id;
     ControlProfile() {
-        buttons[0].assignments = {{{1, 5}, 255}};
-        buttons[1].assignments = {{{1, 5}, 128}};
-        buttons[2].assignments = {{{1, 5}, 0}};
+        const std::array<std::uint8_t, 3> levels{{255, 128, 0}};
+        for (std::size_t i = 0; i < 3; ++i) {
+            buttons[i].action = ButtonActionKind::SetControlValues;
+            buttons[i].controls = {{ControlTarget::Grandmaster, levels[i]}};
+        }
     }
 };
 inline void validate(const ControlProfile &p) {
@@ -40,6 +43,8 @@ inline void validate(const ControlProfile &p) {
     text(p.fader_label);
     text(p.screen_title);
     text(p.target_ip);
+    if (!p.network_interface_id.empty())
+        text(p.network_interface_id);
     validate_target(p.target_ip, p.allow_broadcast);
     if (p.layout_id != "compact-three-column-v1" ||
         (p.screen_view != ScreenView::Color && p.screen_view != ScreenView::Levels) ||
@@ -54,6 +59,15 @@ inline void validate(const ControlProfile &p) {
     validate(p.fader.assignments);
     for (const auto &b : p.buttons) {
         validate(b.assignments);
+        validate_controls(b.controls);
+        if (b.action != ButtonActionKind::DmxCue && b.action != ButtonActionKind::SetControlValues)
+            throw std::invalid_argument("Invalid button action kind");
+        if (b.action == ButtonActionKind::DmxCue && !b.controls.empty())
+            throw std::invalid_argument("DMX action cannot contain internal targets");
+        if (b.action == ButtonActionKind::SetControlValues &&
+            (!b.assignments.empty() || b.controls.empty()))
+            throw std::invalid_argument(
+                "Internal action requires control targets and no DMX assignments");
         if ((b.mode != ButtonMode::Toggle && b.mode != ButtonMode::Flash) || b.fade_in_ms > 60000 ||
             b.fade_out_ms > 60000)
             throw std::invalid_argument("Invalid button mode or fade (0..60000 ms)");

@@ -60,6 +60,16 @@ class CueEngine {
                 kill_others(index, now_ms);
         }
     }
+    bool button_selected(std::size_t i) const {
+        return tracks_.at(i).target > 0;
+    }
+    void deactivate(std::size_t i, std::uint64_t now) {
+        set_target(i, 0, now);
+    }
+    void deactivate_all(std::uint64_t now) {
+        for (std::size_t i = 0; i < tracks_.size(); ++i)
+            deactivate(i, now);
+    }
     void release_all(std::uint64_t now) {
         for (std::size_t i = 0; i < buttons_.size(); ++i)
             button(i, false, now);

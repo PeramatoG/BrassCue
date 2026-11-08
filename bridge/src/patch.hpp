@@ -1,5 +1,6 @@
 // BrassCue - GPL-3.0. Patch and cue configuration types.
 #pragma once
+#include "control_values.hpp"
 #include "value_conversion.hpp"
 #include <cstdint>
 #include <map>
@@ -21,6 +22,8 @@ struct Assignment {
 enum class ValueDisplay { Dmx255, Percent };
 enum class ButtonMode { Toggle, Flash };
 struct ButtonConfig {
+    ButtonActionKind action = ButtonActionKind::DmxCue;
+    std::vector<ControlValueAssignment> controls;
     std::vector<Assignment> assignments;
     ButtonMode mode = ButtonMode::Toggle;
     bool kill = true; // Mutually exclusive within the button group

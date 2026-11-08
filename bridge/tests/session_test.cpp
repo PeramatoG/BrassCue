@@ -7,6 +7,10 @@
 int main() {
     using namespace brasscue;
     ControllerSession session;
+    auto legacy=session.profile();
+    const std::array<std::uint8_t,3> room{{255,128,0}};
+    for(std::size_t i=0;i<3;++i){legacy.buttons[i].action=ButtonActionKind::DmxCue;legacy.buttons[i].controls.clear();legacy.buttons[i].assignments={{{1,5},room[i]}};}
+    session.configure(legacy);
     session.encoder(0, 255);
     session.fader(128);
     CHECK(session.engine().render(0)[1][0] == 128);

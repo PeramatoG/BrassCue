@@ -43,13 +43,14 @@ brasscue::ControlProfile cli_profile(std::uint16_t wire) {
 
 class RefreshLoop {
   public:
-    RefreshLoop(OutputSession *output, const brasscue::CueEngine &engine)
-        : worker_([this, output, &engine] {
+    RefreshLoop(OutputSession *output, brasscue::ControllerSession &session)
+        : worker_([this, output, &session] {
               std::unique_lock<std::mutex> lock(mutex);
               while (!stop_) {
+                  session.advance(now_ms());
                   if (output)
                       try {
-                          output->send(engine, now_ms());
+                          output->send(session.engine(), now_ms());
                       } catch (const std::exception &e) {
                           std::cerr << "Art-Net refresh failed: " << e.what() << "\n";
                           try {
@@ -167,8 +168,12 @@ int run_serial(const std::string &port, OutputSession *udp, const std::string &t
                 }
             }
         }
-        if (udp && now_ms() - last_output >= 40) {
-            udp->send(session.engine(), now_ms());
+        if (now_ms() - last_output >= 40) {
+            session.advance(now_ms());
+            if (handshake.connected())
+                serial.send(brasscue::serialize_state(session.state()));
+            if (udp)
+                udp->send(session.engine(), now_ms());
             last_output = now_ms();
         }
         Sleep(5);
@@ -240,7 +245,7 @@ int run_cli(int argc, char **argv) {
             }
         };
 
-        RefreshLoop refresh(udp.get(), session.engine());
+        RefreshLoop refresh(udp.get(), session);
         std::string line;
         while (std::cout << "> " && std::getline(std::cin, line)) {
             std::lock_guard<std::mutex> lock(refresh.mutex);
@@ -288,10 +293,10 @@ int run_cli(int argc, char **argv) {
             try {
                 const auto v = static_cast<std::uint8_t>(parse_uint(value, 255));
                 if (command == "m")
-                    session.fader(v);
+                    session.fader(v, now_ms());
                 else {
                     const auto channel = std::string("rgbw").find(command[0]);
-                    session.encoder(channel, v);
+                    session.encoder(channel, v, now_ms());
                 }
                 show(session);
                 emit();

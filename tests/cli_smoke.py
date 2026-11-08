@@ -32,9 +32,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
     sock.settimeout(3)
     p = subprocess.Popen([exe, '--simulate', '--target', '127.0.0.1', '--universe', '32767'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     try:
-        p.stdin.write('r 255\nm 128\nbtn 1 1\nbtn 1 0\n')
+        p.stdin.write('r 255\nm 66\nbtn 1 1\nbtn 1 0\n')
         p.stdin.flush()
-        expected = bytes([128, 0, 0, 0, 64])
+        expected = bytes([128, 0, 0, 0, 0])
         matched = 0
         first_match = None
         last_match = None

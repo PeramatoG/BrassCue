@@ -8,6 +8,7 @@ class EncoderKnob final : public wxPanel {
   public:
     EncoderKnob(wxWindow *parent, std::function<void(int)> changed);
     void SetValue(int value) {
+        if(value_==value)return;
         value_ = value;
         Refresh();
     }
