@@ -212,6 +212,7 @@ class KeyboardTestApp final : public wxApp {
         layout->Add(new wxButton(frame, wxID_ANY, "Tab destination"));
         frame->SetSizer(layout);
         frame->Show();
+        frame->Raise();
         Pump();
         Focus(fader);
         Key(WXK_END);

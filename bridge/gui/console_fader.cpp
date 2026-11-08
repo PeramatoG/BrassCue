@@ -38,10 +38,11 @@ class FaderAccessible final : public wxWindowAccessible {
 } // namespace
 #endif
 ConsoleFader::ConsoleFader(wxWindow *parent, wxWindowID id, std::function<void(int)> changed)
-    : wxControl(parent, id, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE),
+    : wxControl(parent, id, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE | wxWANTS_CHARS),
       changed_(std::move(changed)) {
     SetInitialSize(FromDIP(wxSize(80, 360)));
     SetMinSize(FromDIP(wxSize(80, 160)));
+    SetCanFocus(true);
     SetName("Grandmaster");
     SetHelpText("Vertical fader, 0 to 255. Arrows: one step; Page Up/Down: ten; Home/End: limits.");
     SetBackgroundStyle(wxBG_STYLE_PAINT);
@@ -87,6 +88,10 @@ ConsoleFader::ConsoleFader(wxWindow *parent, wxWindowID id, std::function<void(i
     });
     Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent &e) {
         switch (e.GetKeyCode()) {
+        case WXK_TAB:
+            Navigate(e.ShiftDown() ? wxNavigationKeyEvent::IsBackward
+                                   : wxNavigationKeyEvent::IsForward);
+            break;
         case WXK_UP:
         case WXK_RIGHT:
             Change(value_ + 1);
