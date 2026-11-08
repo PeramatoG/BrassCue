@@ -97,6 +97,35 @@ int main() {
     CHECK(s.physical_fader() == 90);
     s.button(2, true, 0);
     CHECK(s.state().master == 0 && s.physical_fader() == 90);
+    ControllerSession patch_session;
+    auto patch_profile = patch_session.profile();
+    patch_profile.fader.grandmaster = false;
+    patch_profile.fader.assignments = {{{2, 1}, 200}};
+    patch_session.configure(patch_profile);
+    patch_session.encoder(0, 255);
+    patch_session.fader(64);
+    patch_session.button(1, true, 0);
+    patch_session.button(1, false, 0);
+    CHECK(patch_session.state().master == 128 && patch_session.fader_value() == 64);
+    CHECK(patch_session.engine().render(0)[1][0] == 128 &&
+          patch_session.engine().render(0)[2][0] == 25);
+    ControllerSession mixed;
+    auto mixed_profile = mixed.profile();
+    auto &cue = mixed_profile.buttons[0];
+    cue.action = ButtonActionKind::DmxCue;
+    cue.controls.clear();
+    cue.assignments = {{{1, 5}, 255}};
+    mixed.configure(mixed_profile);
+    mixed.button(0, true, 0);
+    mixed.button(0, false, 0);
+    CHECK(mixed.button_selected(0, 0));
+    CHECK(!mixed.button_selected(1, 0));
+    mixed.fader(128);
+    CHECK(!mixed.button_selected(1, 0));
+    mixed.button(1, true, 0);
+    mixed.button(1, false, 0);
+    CHECK(mixed.state().master == 128 && mixed.button_selected(1, 0) &&
+          !mixed.button_selected(0, 0));
     auto old = load_profile(std::filesystem::path(TEST_FIXTURES) / "room-v1.bcue");
     CHECK(old.buttons[0].action == ButtonActionKind::DmxCue && old.buttons[0].controls.empty());
     s.configure(old);

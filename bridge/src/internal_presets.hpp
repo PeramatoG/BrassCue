@@ -23,12 +23,12 @@ class InternalPresets {
                 f.running = false;
         }
     }
-    bool selected(std::size_t i, const State &state,
-                  const std::array<ButtonConfig, 3> &configs) const {
+    bool selected(std::size_t i, const State &state, const std::array<ButtonConfig, 3> &configs,
+                  bool allow_match = true) const {
         if (selected_.at(i))
             return true;
         const auto &b = configs[i];
-        if (b.mode == ButtonMode::Flash || b.controls.empty())
+        if (!allow_match || b.mode == ButtonMode::Flash || b.controls.empty())
             return false;
         for (const auto &a : b.controls) {
             if (control_value(state, a.target) != a.value || fades_[unsigned(a.target)].running)
@@ -42,21 +42,22 @@ class InternalPresets {
         return true; // Value match only: never dispatch an event or start a transition.
     }
     const char *status(std::size_t i, const State &state,
-                       const std::array<ButtonConfig, 3> &configs) const {
+                       const std::array<ButtonConfig, 3> &configs, bool allow_match = true) const {
         for (const auto &f : fades_)
             if (f.owner == int(i) && f.running)
                 return selected_[i] ? "FADE IN" : "FADE OUT";
-        return selected(i, state, configs) ? "ON" : "OFF";
+        return selected(i, state, configs, allow_match) ? "ON" : "OFF";
     }
     void button(std::size_t i, bool down, State &state, const std::array<ButtonConfig, 3> &configs,
-                std::uint64_t now) {
+                std::uint64_t now, bool allow_match = true) {
         if (pressed_.at(i) == down)
             return;
         pressed_[i] = down;
         const auto &b = configs[i];
         if (b.mode == ButtonMode::Toggle && !down)
             return;
-        const bool turn_on = b.mode == ButtonMode::Flash ? down : !selected(i, state, configs);
+        const bool turn_on =
+            b.mode == ButtonMode::Flash ? down : !selected(i, state, configs, allow_match);
         if (turn_on) {
             if (b.mode == ButtonMode::Flash)
                 restore_[i] = state;

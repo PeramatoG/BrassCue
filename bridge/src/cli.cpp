@@ -92,7 +92,7 @@ void show(const brasscue::ControllerSession &session) {
     for (auto value : state.rgbw)
         std::cout << " " << int(value);
     std::cout << (session.profile().fader.grandmaster ? " | Grandmaster: " : " | Patch fader: ")
-              << int(state.master) << " | Output RGBW:";
+              << int(session.fader_value()) << " | Output RGBW:";
     // For a fan-out patch, monitor the first address per encoder. Values come
     // from the final merged frame, including target scaling, cues and fader role.
     for (const auto &patch : session.profile().encoders) {
@@ -121,7 +121,6 @@ int run_serial(const std::string &port, OutputSession *udp, const std::string &t
     brasscue::SerialPort serial(port);
     brasscue::ControllerSession session;
     session.configure(cli_profile(universe));
-    const auto &state = session.state();
     std::cout << "BrassCue USB bridge on " << port
               << " (115200 baud). Close Arduino Serial Monitor. Press Q to quit.\n";
     std::cout << (ignore_gm ? "Floating grandmaster input ignored.\n"
@@ -129,7 +128,14 @@ int run_serial(const std::string &port, OutputSession *udp, const std::string &t
     // The Uno announces READY after resetting when the COM port opens.
     // Only request HELLO if that spontaneous announcement never arrives.
     brasscue::SerialHandshake handshake(now_ms());
-    std::string line;
+    std::string line, last_state;
+    const auto send_state = [&] {
+        const auto message = brasscue::serialize_state(session.state());
+        if (message != last_state) {
+            serial.send(message);
+            last_state = message;
+        }
+    };
     std::uint64_t last_output = 0;
     while (true) {
         if (handshake.hello_due(now_ms()))
@@ -149,7 +155,8 @@ int run_serial(const std::string &port, OutputSession *udp, const std::string &t
                 if (!handshake.ready(now_ms()))
                     continue;
                 session.release_all(now_ms());
-                serial.send(brasscue::serialize_state(state));
+                last_state.clear();
+                send_state();
                 std::cout << "Arduino ready: sent initial RGBW/master state.\n";
             } else if (event.type == brasscue::EventType::StateAck) {
                 std::cout << "Arduino acknowledged state.\n";
@@ -159,7 +166,7 @@ int run_serial(const std::string &port, OutputSession *udp, const std::string &t
                 }
                 if (session.event(event, ignore_gm, now_ms())) {
                     show(session);
-                    serial.send(brasscue::serialize_state(state));
+                    send_state();
                     if (udp) {
                         udp->send(session.engine(), now_ms());
                         std::cout << "[ArtDmx sent to " << target << ":6454; port-address "
@@ -171,7 +178,7 @@ int run_serial(const std::string &port, OutputSession *udp, const std::string &t
         if (now_ms() - last_output >= 40) {
             session.advance(now_ms());
             if (handshake.connected())
-                serial.send(brasscue::serialize_state(session.state()));
+                send_state();
             if (udp)
                 udp->send(session.engine(), now_ms());
             last_output = now_ms();

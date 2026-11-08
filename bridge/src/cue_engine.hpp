@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 
@@ -22,6 +23,9 @@ class CueEngine {
     void configure_fader(FaderConfig config) {
         validate(config.assignments);
         fader_ = std::move(config);
+    }
+    void set_master_override(std::uint8_t value) {
+        master_override_ = value;
     }
     void set_fader(std::uint8_t value) {
         fader_value_ = value;
@@ -87,7 +91,8 @@ class CueEngine {
             auto &slot = frames[address.universe][address.channel - 1];
             slot = (std::max)(slot, value);
         };
-        const unsigned master = fader_.grandmaster ? fader_value_ : 255u;
+        const unsigned master =
+            master_override_.value_or(fader_.grandmaster ? fader_value_ : std::uint8_t(255));
         for (const auto &encoder : encoders_)
             for (const auto &a : encoder.assignments)
                 write(a.address,
@@ -96,8 +101,9 @@ class CueEngine {
                                    static_cast<std::uint8_t>(master)));
         if (!fader_.grandmaster)
             for (const auto &a : fader_.assignments)
-                write(a.address,
-                      static_cast<std::uint8_t>((unsigned(a.value) * fader_value_ + 127u) / 255u));
+                write(a.address, apply_master(static_cast<std::uint8_t>(
+                                                  (unsigned(a.value) * fader_value_ + 127u) / 255u),
+                                              static_cast<std::uint8_t>(master)));
         for (std::size_t i = 0; i < buttons_.size(); ++i) {
             const double level = level_at(i, now_ms);
             for (const auto &a : buttons_[i].assignments)
@@ -152,6 +158,7 @@ class CueEngine {
             if (i != selected && tracks_[i].target > 0.0)
                 set_target(i, 0.0, now);
     }
+    std::optional<std::uint8_t> master_override_;
     FaderConfig fader_;
     std::uint8_t fader_value_ = 255;
     std::array<Encoder, 4> encoders_{};

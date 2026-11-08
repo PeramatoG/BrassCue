@@ -20,6 +20,9 @@ class ControllerSession {
     const CueEngine &engine() const {
         return engine_;
     }
+    std::uint8_t fader_value() const {
+        return profile_.fader.grandmaster ? state_.master : patch_fader_;
+    }
     std::optional<std::uint8_t> physical_fader() const {
         return physical_fader_;
     }
@@ -35,21 +38,35 @@ class ControllerSession {
         validate(p);
         CueEngine next({p.buttons.begin(), p.buttons.end()});
         next.configure_fader(p.fader);
-        next.set_fader(state_.master);
+        auto next_state = state_;
+        if (p.fader.grandmaster != profile_.fader.grandmaster)
+            next_state.master = p.fader.grandmaster ? patch_fader_ : std::uint8_t(255);
+        next.set_fader(p.fader.grandmaster ? next_state.master : patch_fader_);
+        next.set_master_override(next_state.master);
         for (std::size_t i = 0; i < 4; ++i)
             next.set_encoder(i, p.encoders[i], state_.rgbw[i]);
         profile_ = std::move(p);
+        state_ = next_state;
         engine_ = std::move(next);
         presets_ = InternalPresets{};
     }
     void advance(std::uint64_t now) {
         const auto previous = state_;
         presets_.advance(state_, now);
-        if (previous.master != state_.master)
-            engine_.set_fader(state_.master);
+        if (previous.master != state_.master) {
+            engine_.set_master_override(state_.master);
+            if (profile_.fader.grandmaster)
+                engine_.set_fader(state_.master);
+        }
         for (std::size_t i = 0; i < 4; ++i)
             if (previous.rgbw[i] != state_.rgbw[i])
                 engine_.set_encoder(i, profile_.encoders[i], state_.rgbw[i]);
+    }
+    void encoder_delta(std::size_t i, int delta, std::uint64_t now) {
+        if (i >= 4 || delta < -255 || delta > 255)
+            throw std::invalid_argument("Invalid encoder delta/index");
+        advance(now);
+        encoder(i, std::uint8_t(std::clamp(int(state_.rgbw[i]) + delta, 0, 255)), now);
     }
     void encoder(std::size_t i, std::uint8_t value, std::uint64_t now = 0) {
         advance(now);
@@ -61,20 +78,24 @@ class ControllerSession {
     }
     void fader(std::uint8_t value, std::uint64_t now = 0) {
         advance(now);
-        presets_.manual(ControlTarget::Grandmaster, profile_.buttons);
-        state_.master = value;
+        patch_fader_ = value;
+        if (profile_.fader.grandmaster) {
+            presets_.manual(ControlTarget::Grandmaster, profile_.buttons);
+            state_.master = value;
+            engine_.set_master_override(value);
+        }
         engine_.set_fader(value);
     }
     bool button_selected(std::size_t i, std::uint64_t now) const {
         (void)now;
         return profile_.buttons.at(i).action == ButtonActionKind::DmxCue
                    ? engine_.button_selected(i)
-                   : presets_.selected(i, state_, profile_.buttons);
+                   : presets_.selected(i, state_, profile_.buttons, !dmx_selected());
     }
     const char *button_status(std::size_t i, std::uint64_t now) const {
         return profile_.buttons.at(i).action == ButtonActionKind::DmxCue
                    ? engine_.button_status(i, now)
-                   : presets_.status(i, state_, profile_.buttons);
+                   : presets_.status(i, state_, profile_.buttons, !dmx_selected());
     }
     void button(std::size_t i, bool down, std::uint64_t now) {
         advance(now);
@@ -86,12 +107,10 @@ class ControllerSession {
                 presets_.cancel_all();
         } else {
             const bool previous = presets_.explicitly_selected(i);
-            presets_.button(i, down, state_, profile_.buttons, now);
+            presets_.button(i, down, state_, profile_.buttons, now, !dmx_selected());
             if (!previous && presets_.explicitly_selected(i) && b.kill)
                 engine_.deactivate_all(now);
-            engine_.set_fader(state_.master);
-            for (std::size_t j = 0; j < 4; ++j)
-                engine_.set_encoder(j, profile_.encoders[j], state_.rgbw[j]);
+            sync_values();
         }
     }
     void release_all(std::uint64_t now) {
@@ -128,11 +147,20 @@ class ControllerSession {
     }
 
   private:
+    bool dmx_selected() const {
+        for (std::size_t i = 0; i < 3; ++i)
+            if (profile_.buttons[i].action == ButtonActionKind::DmxCue &&
+                engine_.button_selected(i))
+                return true;
+        return false;
+    }
     void sync_values() {
-        engine_.set_fader(state_.master);
+        engine_.set_fader(fader_value());
+        engine_.set_master_override(state_.master);
         for (std::size_t j = 0; j < 4; ++j)
             engine_.set_encoder(j, profile_.encoders[j], state_.rgbw[j]);
     }
+    std::uint8_t patch_fader_ = 255;
     ControlProfile profile_;
     State state_;
     CueEngine engine_;
