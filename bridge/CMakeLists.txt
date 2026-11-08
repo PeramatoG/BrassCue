@@ -73,17 +73,20 @@ if(BRASSCUE_BUILD_GUI)
   target_link_libraries(brasscue-gui PRIVATE brasscue-gui-support)
   if(BRASSCUE_ENABLE_WEB_PANEL)
     function(brasscue_copy_web_assets target)
-      add_custom_command(TARGET ${target} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${target}>/web_assets"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-          "${CMAKE_CURRENT_SOURCE_DIR}/gui/web_assets/compact.html"
-          "${CMAKE_CURRENT_SOURCE_DIR}/gui/web_assets/compact.css"
-          "${CMAKE_CURRENT_SOURCE_DIR}/gui/web_assets/compact.js"
-          "$<TARGET_FILE_DIR:${target}>/web_assets")
-      if(WIN32)
-        add_custom_command(TARGET ${target} POST_BUILD
-          COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BRASSCUE_WEBVIEW2_LOADER}" "$<TARGET_FILE_DIR:${target}>")
+      if(NOT TARGET brasscue-web-assets)
+        add_custom_target(brasscue-web-assets
+          COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:brasscue-gui>/web_assets"
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/gui/web_assets/compact.html"
+            "${CMAKE_CURRENT_SOURCE_DIR}/gui/web_assets/compact.css"
+            "${CMAKE_CURRENT_SOURCE_DIR}/gui/web_assets/compact.js"
+            "$<TARGET_FILE_DIR:brasscue-gui>/web_assets")
+        if(WIN32)
+          add_custom_command(TARGET brasscue-web-assets POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BRASSCUE_WEBVIEW2_LOADER}" "$<TARGET_FILE_DIR:brasscue-gui>")
+        endif()
       endif()
+      add_dependencies(${target} brasscue-web-assets)
     endfunction()
     if(WIN32)
       install(FILES "${BRASSCUE_WEBVIEW2_LOADER}" DESTINATION bin)
