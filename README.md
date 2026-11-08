@@ -51,7 +51,7 @@ Output refreshes at approximately 25 Hz while enabled; normal stop attempts zero
 
 The optional wxWidgets GUI has a three-column physical layout, rotary RGBW
 controls, vertical fader, temporary encoder/GM readout and configurable TFT.
-The default SALA 100/50/0 buttons are exclusive internal GM presets (255/128/0),
+The default HOUSE 100/50/0 buttons are exclusive internal GM presets (255/128/0),
 synchronized with the virtual fader, display and output. Explicit DMX cues remain
 an alternative; labels, targets, Flash/Toggle, Kill and fades are editable.
 An opt-in local wxWebView panel shares the C++ state and retains native fallback.

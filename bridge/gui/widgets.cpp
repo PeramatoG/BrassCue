@@ -140,13 +140,18 @@ ColorPreview::ColorPreview(wxWindow *parent)
                                 ? wxColour(view_.color[0], view_.color[1], view_.color[2])
                                 : wxColour(22, 24, 29)));
         dc.DrawRectangle(x, y, side, side);
-        if (view_.mode == brasscue::ScreenView::Levels)
+        if (view_.mode == brasscue::ScreenView::Levels) {
+            int label_width = 0;
+            for (const auto &label : view_.labels)
+                label_width = std::max(label_width, dc.GetTextExtent(wxString::FromUTF8(label)).x);
+            const int bar_x = label_width + 14;
             for (unsigned i = 0; i < 4; ++i) {
                 dc.DrawText(wxString::FromUTF8(view_.labels[i]), x + 6, y + 8 + i * 30);
                 dc.SetBrush(wxBrush(wxColour(205, 161, 84)));
-                dc.DrawRectangle(x + 44, y + 10 + i * 30,
-                                 int(view_.levels[i]) * std::max(1, side - 52) / 100, 16);
+                dc.DrawRectangle(x + bar_x, y + 10 + i * 30,
+                                 int(view_.levels[i]) * std::max(1, side - bar_x - 8) / 100, 16);
             }
+        }
     });
 }
 void ColorPreview::SetView(const brasscue::ScreenViewData &view) {

@@ -76,12 +76,12 @@ rounded percentage cannot represent the original byte exactly.
 ## Buttons and time
 
 Two action kinds share input edges but have different value semantics. Default
-SALA 100/50/0 target the effective GM at 255/128/0; they are not channel 1.5 cues.
+HOUSE 100/50/0 target the effective GM at 255/128/0; they are not channel 1.5 cues.
 `InternalPresets` interpolates each logical control from its current effective
 value using injected monotonic milliseconds. The latest command owns each target
 (LTP), including with Kill off. Kill cancels other internal ownership, holding
 current values; the new preset starts from those values without a zero jump.
-Toggle-off targets safe zero. SALA 0 stays at zero and can remain highlighted.
+Toggle-off targets safe zero. HOUSE 0 stays at zero and can remain highlighted.
 Flash stores previous values and restores only targets it still owns on release,
 with fade-out. A later preset or manual command cannot be undone by a stale
 Flash release. Manual movement of any target cancels that preset's remaining

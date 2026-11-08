@@ -149,7 +149,17 @@ void NetworkPanel::SetOutput(bool enabled) {
         enable_->SetValue(enabled);
 }
 void NetworkPanel::WritePreferences(brasscue::ControllerSession &session) const {
-    session.network(ip_->GetValue().ToStdString(), mode_->GetSelection() == 1, SelectedId());
+    const bool broadcast = mode_->GetSelection() == 1;
+    auto manual = ip_->GetValue().ToStdString();
+    if (broadcast) {
+        // The disabled unicast draft is not the broadcast destination.
+        try {
+            brasscue::validate_target(manual, false);
+        } catch (const std::invalid_argument &) {
+            manual = session.profile().target_ip;
+        }
+    }
+    session.network(manual, broadcast, SelectedId());
 }
 brasscue::ResolvedNetwork NetworkPanel::Resolve() const {
     // Re-enumerate on enable: a stale dropdown can never silently choose another NIC.

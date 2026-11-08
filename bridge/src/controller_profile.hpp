@@ -11,12 +11,12 @@ struct ControlProfile {
     std::string id = "rgbw-compact";
     std::string name = "RGBW Compact";
     std::string layout_id = "compact-three-column-v1";
-    std::array<std::string, 4> encoder_labels{{"R", "G", "B", "W"}};
+    std::array<std::string, 4> encoder_labels{{"RED", "GREEN", "BLUE", "WHITE"}};
     std::array<std::vector<Assignment>, 4> encoders{
         {{{{1, 1}, 255}}, {{{1, 2}, 255}}, {{{1, 3}, 255}}, {{{1, 4}, 255}}}};
     std::string fader_label = "GRANDMASTER";
     FaderConfig fader;
-    std::array<std::string, 3> button_labels{{"SALA 100%", "SALA 50%", "SALA 0%"}};
+    std::array<std::string, 3> button_labels{{"HOUSE 100%", "HOUSE 50%", "HOUSE 0%"}};
     std::array<ButtonConfig, 3> buttons;
     std::string screen_title = "RGBW LIVE";
     ScreenView screen_view = ScreenView::Color;

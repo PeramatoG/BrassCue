@@ -1,5 +1,6 @@
 // BrassCue - GPL-3.0. Exercise real modal edit/commit/cancel, not a model substitute.
 #include "../gui/assignment_table.hpp"
+#include "../gui/network_panel.hpp"
 #include "../gui/profile_editor.hpp"
 #include "../gui/widgets.hpp"
 #include "../src/profile_io.hpp"
@@ -126,6 +127,24 @@ class EditorTestApp final : public wxApp {
         accessible.SetEventObject(button);
         button->GetEventHandler()->ProcessEvent(accessible);
         CHECK(edges.size() == 4 && edges[2] && !edges[3]);
+        auto *network = new NetworkPanel(frame, [] {}, [](bool) {});
+        brasscue::ControllerSession network_session;
+        network->Load(network_session.profile());
+        wxRadioBox *destination = nullptr;
+        wxTextCtrl *unicast = nullptr;
+        for (auto *child : network->GetChildren()) {
+            if (auto *radio = wxDynamicCast(child, wxRadioBox))
+                destination = radio;
+            if (auto *text = wxDynamicCast(child, wxTextCtrl))
+                if (text->IsEditable())
+                    unicast = text;
+        }
+        CHECK(destination && unicast);
+        destination->SetSelection(1);
+        unicast->ChangeValue("");
+        network->WritePreferences(network_session);
+        CHECK(network_session.profile().allow_broadcast);
+        CHECK(network_session.profile().target_ip == "127.0.0.1");
         frame->Destroy();
         std::cout << "Real modal editor commit/cancel and UTF-8 labels passed\n";
         std::exit(0);

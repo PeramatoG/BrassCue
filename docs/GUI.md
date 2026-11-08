@@ -1,7 +1,7 @@
 # BrassCue desktop simulator
 
 The wxWidgets GUI runs without an Uno. The physical-style panel has fader/display
-on the left, R/G/B/W rotary controls in the middle, and TFT plus SALA 100/50/0 on
+on the left, R/G/B/W rotary controls in the middle, and TFT plus HOUSE 100/50/0 on
 the right. Network controls sit below. GUI does not open COM ports; use the CLI
 for BC1. Operational levels use percentages, not hexadecimal.
 
@@ -70,6 +70,10 @@ the user's Windows build.
 
 ## Controls and contextual editors
 
+Default encoder labels are RED, GREEN, BLUE and WHITE; existing profiles keep their labels.
+Fade editors use seconds (0..60 s), with 0.1 s steps and one decimal; storage
+and the engine retain milliseconds for compatibility.
+
 Use mouse wheel, circular relative drag, arrows (one DMX step), Page Up/Down (ten steps)
 on each knob. Fader is vertical with maximum at the top. Right-click any knob,
 label, fader, numeric display, TFT or cue button to edit. Keyboard context-menu
@@ -87,7 +91,7 @@ signed byte step per event. Drag begins without changing a value, supports
 multiple clockwise/counterclockwise turns, wraps angles, ignores center noise/
 teleports, and clamps in Core. Keyboard step sizes are unchanged.
 
-Default SALA 100/50/0 are internal GM commands. Fader, display, TFT and DMX
+Default HOUSE 100/50/0 are internal GM commands. Fader, display, TFT and DMX
 follow their effective levels/fades. Manual movement cancels the owning preset;
 matching 0/128/255 highlights without a synthetic press. Toggle-off targets zero;
 Flash returns to previous still-owned values. Kill off uses the latest command
@@ -101,7 +105,9 @@ Profile menu: Open/import (Ctrl+O), Save (Ctrl+S), Save as/export (Ctrl+Shift+S)
 OFF on launch/open/reset. Network edits stop output intentionally; re-enable when
 ready. Select a real active IPv4 interface by name/IP/mask, or Auto for unicast.
 Broadcast requires an explicit capable NIC; its read-only destination is
-IPv4 | ~netmask (not an assumed .255). The socket binds source and interface.
+IPv4 | ~netmask (not an assumed .255). An empty/invalid disabled unicast draft
+does not block broadcast; the last valid unicast preference is retained. The
+socket binds source and interface.
 Missing/changed NICs stop output, with a warning, and require reactivation.
 Loopback/unsupported masks cannot broadcast. VPN/virtual interfaces follow their
 reported capability; no silent fallback to a different route.
@@ -118,7 +124,7 @@ Profile operations and limitations are documented in [Profiles](PROFILES.md).
    targets. Duplicate/out-of-range entries must fail with the old profile intact.
 4. Change fader GM to patch with target 128: midpoint gives about 64 with GM100;
    an internal GM50 preset scales that output to about 32. Restore GM: its patch is ignored and all output scales.
-5. Toggle SALA 100->50->0 and press active again; RGBW remains unchanged. Set
+5. Toggle HOUSE 100->50->0 and press active again; RGBW remains unchanged. Set
    nonzero fades, reverse mid-fade, disable Kill and verify last-command internal
    ownership. Set Flash; release outside and via keyboard/lost focus; previous
    still-owned values must return. Check default GM50 synchronizes fader/display.

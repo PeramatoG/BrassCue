@@ -2,6 +2,7 @@
 #include "button_editor.hpp"
 #include "assignment_table.hpp"
 #include "dark_theme.hpp"
+#include <cmath>
 #include <wx/spinctrl.h>
 namespace {
 class ButtonDialog final : public wxDialog {
@@ -36,13 +37,17 @@ class ButtonDialog final : public wxDialog {
         options->Add(kill_, 1, wxALIGN_CENTER_VERTICAL);
         root->Add(options, 0, wxEXPAND | wxALL, 6);
         auto *timings = new wxFlexGridSizer(2, 2, 6, 6);
-        timings->Add(new wxStaticText(this, wxID_ANY, "Fade in (ms)"));
-        in_ = new wxSpinCtrl(this, FadeInId, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS,
-                             0, 60000, b.fade_in_ms);
+        timings->Add(new wxStaticText(this, wxID_ANY, "Fade in (s)"));
+        in_ = new wxSpinCtrlDouble(this, FadeInId, "", wxDefaultPosition, wxDefaultSize,
+                                   wxSP_ARROW_KEYS, 0, 60, b.fade_in_ms / 1000.0, 0.1);
+        in_->SetDigits(1);
+        initial_in_ = in_->GetValue();
         timings->Add(in_);
-        timings->Add(new wxStaticText(this, wxID_ANY, "Fade out (ms)"));
-        out_ = new wxSpinCtrl(this, FadeOutId, "", wxDefaultPosition, wxDefaultSize,
-                              wxSP_ARROW_KEYS, 0, 60000, b.fade_out_ms);
+        timings->Add(new wxStaticText(this, wxID_ANY, "Fade out (s)"));
+        out_ = new wxSpinCtrlDouble(this, FadeOutId, "", wxDefaultPosition, wxDefaultSize,
+                                    wxSP_ARROW_KEYS, 0, 60, b.fade_out_ms / 1000.0, 0.1);
+        out_->SetDigits(1);
+        initial_out_ = out_->GetValue();
         timings->Add(out_);
         root->Add(timings, 0, wxALL, 6);
         table_ = new AssignmentTable(this, b.assignments, b.controls, p.units,
@@ -90,8 +95,13 @@ class ButtonDialog final : public wxDialog {
         b.action = static_cast<brasscue::ButtonActionKind>(action_->GetSelection());
         b.mode = static_cast<brasscue::ButtonMode>(mode_->GetSelection());
         b.kill = kill_->GetValue();
-        b.fade_in_ms = in_->GetValue();
-        b.fade_out_ms = out_->GetValue();
+        // Keep legacy millisecond precision unless the displayed duration changes.
+        const auto milliseconds = [](wxSpinCtrlDouble *control, unsigned original, double initial) {
+            const auto tenths = std::lround(control->GetValue() * 10.0);
+            return control->GetValue() == initial ? original : unsigned(tenths * 100);
+        };
+        b.fade_in_ms = milliseconds(in_, b.fade_in_ms, initial_in_);
+        b.fade_out_ms = milliseconds(out_, b.fade_out_ms, initial_out_);
         b.assignments = table_->Internal() ? std::vector<brasscue::Assignment>{} : table_->Dmx();
         b.controls = table_->Internal() ? table_->Controls()
                                         : std::vector<brasscue::ControlValueAssignment>{};
@@ -103,9 +113,10 @@ class ButtonDialog final : public wxDialog {
     wxChoice *action_;
     wxChoice *mode_;
     wxCheckBox *kill_;
-    wxSpinCtrl *in_;
-    wxSpinCtrl *out_;
+    wxSpinCtrlDouble *in_;
+    wxSpinCtrlDouble *out_;
     AssignmentTable *table_;
+    double initial_in_ = 0, initial_out_ = 0;
 };
 } // namespace
 bool EditButtonProfile(wxWindow *parent, brasscue::ControlProfile &profile, std::size_t i) {
