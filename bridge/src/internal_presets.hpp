@@ -123,8 +123,13 @@ class InternalPresets {
     }
     void transition(ControlTarget target, std::uint8_t value, std::size_t owner, unsigned duration,
                     const State &state, std::uint64_t now) {
+        const int previous = fades_[unsigned(target)].owner;
         fades_[unsigned(target)] = {
             double(control_value(state, target)), double(value), now, duration, int(owner), true};
+        if (previous >= 0 && previous != int(owner) &&
+            std::none_of(fades_.begin(), fades_.end(),
+                         [previous](const Fade &f) { return f.owner == previous; }))
+            selected_[previous] = false; // No remaining control belongs to the superseded preset.
     }
     std::array<Fade, 5> fades_{};
     std::array<bool, 3> pressed_{}, selected_{};

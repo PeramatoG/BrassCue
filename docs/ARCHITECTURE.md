@@ -41,6 +41,8 @@ bridge/gui/
   button_editor.*          explicit action/mode/Kill/fade editor
   dark_theme.*             documented DWM and wx appearance APIs
   widgets.*                rotary input, cue edges and simulated TFT
+  console_fader.*          DPI-scaled fader drawing/input; no live state ownership
+  editor_buttons.hpp      standard button order without an implicit default OK
   profile_editor.*         transactional contextual editor
   profile_files.*          user-selected profile file workflow
 bridge/tests/              pure native unit/integration tests
@@ -53,6 +55,11 @@ that profile and exposed read-only to frontends. There are no parallel old
 single-channel/FaderRole/ButtonAction profiles. BC1 STATE remains the historical
 five raw bytes; room cues are host-owned and do not extend the wire protocol.
 Core never includes wxWidgets or Arduino. CMake registers sources explicitly.
+
+Internal preset selection follows control ownership. With Kill off, taking the
+last control owned by an older preset clears its selection, including during a
+fade. Presets that still own disjoint targets can remain selected together;
+levels, fade timing and stale Flash release retain per-target ownership rules.
 
 ## Patch and merge
 

@@ -26,7 +26,9 @@ For Ninja omit `-A x64` and specify `-DCMAKE_BUILD_TYPE=Debug` (or Release)
 in separate directories. Windows defaults GUI ON; Linux defaults OFF.
 Linux GUI uses system wxWidgets 3.2 (`libwxgtk3.2-dev`) with
 `cmake -S . -B build-gui -DBRASSCUE_BUILD_GUI=ON -DCMAKE_BUILD_TYPE=Debug`.
-Native GUI configurations run thirteen CTest tests, including real modal editor and button presentation checks. Headless configurations run twelve. Web builds add an actual embedded-renderer integration test. On Linux run GUI CTest under a display (for example `xvfb-run -a ctest --test-dir build-gui --output-on-failure`). Python 3 is required for test integration. No manifest migration is needed.
+Native GUI configurations run fourteen CTest tests, including real modal editor/button presentation checks and OS keyboard/mouse interaction.
+OS interaction uses wx UI simulation where enabled, or Win32 SendInput on Windows
+vcpkg builds that disable it; other unsupported backends explicitly skip (77). Headless configurations run twelve. Web builds add an actual embedded-renderer integration test. On Linux run GUI CTest under a display (for example `xvfb-run -a ctest --test-dir build-gui --output-on-failure`). Python 3 is required for test integration. No manifest migration is needed.
 
 CI includes Windows GUI builds with classic vcpkg and tests in Debug/Release,
 Linux GUI compilation, and four Windows/Linux headless configurations. An added
@@ -75,11 +77,19 @@ Fade editors use seconds (0..60 s), with 0.1 s steps and one decimal; storage
 and the engine retain milliseconds for compatibility.
 
 Use mouse wheel, circular relative drag, arrows (one DMX step), Page Up/Down (ten steps)
-on each knob. Fader is vertical with maximum at the top. Right-click any knob,
+on each knob. Fader is vertical with maximum at the top. Its recessed dark rail, wide metallic cap
+and central brass-edged groove use DPI-scaled drawing without image assets. Drag
+the cap or click the rail; arrows adjust one byte, Page Up/Down ten, Home selects
+255 and End selects 0. Tab enters/leaves the fader and a brass focus outline marks
+keyboard focus. Native and WebView controls share the same session/snapshots. Right-click any knob,
 label, fader, numeric display, TFT or cue button to edit. Keyboard context-menu
 invocation is also accepted. One modal editor owns a candidate profile: edit
 labels, table rows, units, fader role, button mode/Kill/fades, TFT title/view as
-applicable, then OK once. Cancel discards everything. Add/remove table rows and
+applicable, then OK once. Enter in a label or fade field confirms that field; Enter in a grid
+commits only its cell. The editor stays open. Tab/Shift+Tab retain normal navigation;
+Escape retains wxWidgets dialog cancellation. Only explicit OK (mouse, keyboard
+activation while OK is focused, or its standard accelerator) commits the profile.
+Cancel discards everything. Add/remove table rows and
 edit cells in place. Errors identify invalid rows; duplicates cannot be committed.
 Changing unit presentation does not rewrite untouched target bytes. Button action chooses explicit DMX assignments or internal GM/R/G/B/W targets; Add all RGBW creates four independent rows. Editing and Cancel do not alter live values.
 
@@ -95,7 +105,8 @@ Default HOUSE 100/50/0 are internal GM commands. Fader, display, TFT and DMX
 follow their effective levels/fades. Manual movement cancels the owning preset;
 matching 0/128/255 highlights without a synthetic press. Toggle-off targets zero;
 Flash returns to previous still-owned values. Kill off uses the latest command
-per logical target. Explicit DMX actions retain HTP behavior. Focus/capture loss
+per logical target. A superseded preset loses its highlight when it owns no
+remaining controls; presets still owning disjoint controls can remain highlighted. Explicit DMX actions retain HTP behavior. Focus/capture loss
 and renderer handoff release Flash. See [Architecture](ARCHITECTURE.md).
 TFT Color displays an approximate additive RGBW mix; Levels draws actual level
 bars. The four-character display temporarily shows an encoder for two seconds,
@@ -122,6 +133,10 @@ Profile operations and limitations are documented in [Profiles](PROFILES.md).
 3. Right-click each control; Cancel must not dirty the profile. Change labels,
    add `1.23=255`, `2.8=128`, `3.128=0`, switch units twice, save/reopen and inspect
    targets. Duplicate/out-of-range entries must fail with the old profile intact.
+   In every encoder, fader, button and TFT editor, press Enter in labels, both
+   fade fields and the first/last grid cells: only the field/cell commits, the
+   dialog stays open. Check Tab/Shift+Tab, focused OK/Cancel with Enter and Escape.
+   Cancel after multiple field commits must preserve the original profile exactly.
 4. Change fader GM to patch with target 128: midpoint gives about 64 with GM100;
    an internal GM50 preset scales that output to about 32. Restore GM: its patch is ignored and all output scales.
 5. Toggle HOUSE 100->50->0 and press active again; RGBW remains unchanged. Set
@@ -146,6 +161,11 @@ Profile operations and limitations are documented in [Profiles](PROFILES.md).
     label; it must appear literally. Check idle updates and unchanged buttons.
 11. Check circular motion across ±pi, center crossings, multiple turns, saturation,
     keyboard/wheel parity, DPI/resizing, fader cursor, TFT and zero selection.
+    At 100/150/200% DPI and the minimum window size, inspect the fader cap/groove,
+    rail and focus outline. Drag from an off-center point on the cap without a
+    value jump; check full travel 0/128/255 and preset/manual synchronization.
+    Check the native Windows slider role/value with Narrator; Linux assistive
+    technology remains a manual check for the painted control.
 12. Verify /24, /16, /23, /25 broadcast calculations without enabling output.
     Disconnect the selected NIC; output must stop within five seconds. Test actual
     broadcast only after explicitly arranging an isolated receiver/network.

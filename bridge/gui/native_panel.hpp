@@ -1,9 +1,9 @@
 // BrassCue - GPL-3.0. Native fallback composition; dispatches inputs to shared controllers.
 #pragma once
+#include "console_fader.hpp"
 #include "presentation/controller_actions.hpp"
 #include "widgets.hpp"
 #include <optional>
-#include <wx/slider.h>
 class NativePanel final : public wxPanel {
   public:
     NativePanel(wxWindow *, brasscue::ControllerActions);
@@ -15,7 +15,7 @@ class NativePanel final : public wxPanel {
     void BindEdit(wxWindow *, int);
     brasscue::ControllerActions actions_;
     std::optional<brasscue::ViewSnapshot> previous_;
-    wxSlider *fader_ = nullptr;
+    ConsoleFader *fader_ = nullptr;
     wxStaticText *fader_label_ = nullptr;
     wxStaticText *digits_ = nullptr;
     wxStaticText *percent_ = nullptr;

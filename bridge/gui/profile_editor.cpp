@@ -3,6 +3,7 @@
 #include "assignment_table.hpp"
 #include "button_editor.hpp"
 #include "dark_theme.hpp"
+#include "editor_buttons.hpp"
 namespace {
 class ElementDialog final : public wxDialog {
   public:
@@ -15,7 +16,10 @@ class ElementDialog final : public wxDialog {
                     : element == 4 ? p.fader_label
                                    : p.screen_title;
         root->Add(new wxStaticText(this, wxID_ANY, "Label / title"), 0, wxALL, 6);
-        label_ = new wxTextCtrl(this, wxID_ANY, wxString::FromUTF8(text));
+        label_ = new wxTextCtrl(this, wxID_ANY, wxString::FromUTF8(text), wxDefaultPosition,
+                                wxDefaultSize, wxTE_PROCESS_ENTER);
+        // Enter belongs to this field, never the dialog default button.
+        label_->Bind(wxEVT_TEXT_ENTER, [](wxCommandEvent &) {});
         root->Add(label_, 0, wxEXPAND | wxALL, 6);
         mode_ = new wxChoice(this, wxID_ANY);
         if (element == 4) {
@@ -37,7 +41,7 @@ class ElementDialog final : public wxDialog {
                 this, element < 4 ? p.encoders[element] : p.fader.assignments, {}, p.units);
             root->Add(table_, 1, wxEXPAND | wxALL, 6);
         }
-        root->Add(CreateSeparatedButtonSizer(wxOK | wxCANCEL), 0, wxEXPAND | wxALL, 6);
+        root->Add(EditorButtons(*this), 0, wxEXPAND | wxALL, 6);
         SetSizer(root);
         ApplyDarkTheme(*this);
         Bind(

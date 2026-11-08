@@ -89,6 +89,7 @@ int main() {
     s.button(1, true, 0);
     s.button(1, false, 0);
     CHECK(s.state().rgbw == std::array<std::uint8_t, 4>{{11, 22, 33, 44}});
+    CHECK(s.button_selected(0, 0) && s.button_selected(1, 0)); // GM remains owned by preset 0.
     s.button(0, true, 0);
     s.button(0, false, 0);
     CHECK(s.state().rgbw[0] == 11); // Older command cannot overwrite latest owner on release.
@@ -126,6 +127,33 @@ int main() {
     crossfade.fader(128, 1500);
     crossfade.advance(9000);
     CHECK(crossfade.state().master == 128);
+    // Kill off permits disjoint presets, but a newer GM command must unhighlight the old one.
+    timed.buttons[0].kill = false;
+    timed.buttons[1].kill = false;
+    timed.buttons[0].fade_in_ms = timed.buttons[1].fade_in_ms = 2000;
+    crossfade.configure(timed);
+    crossfade.fader(0);
+    crossfade.button(0, true, 0);
+    crossfade.button(0, false, 0);
+    crossfade.advance(1000);
+    CHECK(crossfade.state().master == 128 && crossfade.button_selected(0, 1000));
+    crossfade.button(1, true, 1000);
+    crossfade.button(1, false, 1000);
+    CHECK(crossfade.button_selected(1, 1000) && !crossfade.button_selected(0, 1000));
+    crossfade.advance(3000);
+    CHECK(crossfade.state().master == 128 && !crossfade.button_selected(0, 3000));
+    // A disjoint Red preset can remain selected beside GM even with fades.
+    timed.buttons[2].controls = {{ControlTarget::Red, 100}};
+    timed.buttons[2].kill = false;
+    timed.buttons[2].fade_in_ms = 1000;
+    crossfade.configure(timed);
+    crossfade.button(0, true, 0);
+    crossfade.button(0, false, 0);
+    crossfade.button(2, true, 0);
+    crossfade.button(2, false, 0);
+    crossfade.advance(2000);
+    CHECK(crossfade.state().master == 255 && crossfade.state().rgbw[0] == 100);
+    CHECK(crossfade.button_selected(0, 2000) && crossfade.button_selected(2, 2000));
     timed.buttons[0].mode = ButtonMode::Flash;
     timed.buttons[0].fade_in_ms = 0;
     timed.buttons[1].fade_in_ms = 0;

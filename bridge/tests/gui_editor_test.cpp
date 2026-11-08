@@ -5,9 +5,11 @@
 #include "../gui/widgets.hpp"
 #include "../src/profile_io.hpp"
 #include "check.hpp"
+#include <cmath>
 #include <vector>
 #include <wx/choice.h>
 #include <wx/grid.h>
+#include <wx/spinctrl.h>
 #include <wx/textctrl.h>
 class EditorTestApp final : public wxApp {
   public:
@@ -72,6 +74,26 @@ class EditorTestApp final : public wxApp {
             auto *grid =
                 wxDynamicCast(wxWindow::FindWindowById(AssignmentTable::GridId, dialog), wxGrid);
             CHECK(grid && grid->GetNumberRows() == 1 && grid->GetCellValue(0, 0) == "Grandmaster");
+            // Windows generic double-spin caches its value until focus loss. Enter must
+            // confirm the visible edit text, even when UI simulation is unavailable.
+            for (auto *child : dialog->GetChildren()) {
+                auto *spin = wxDynamicCast(child, wxSpinCtrlDouble);
+                if (!spin)
+                    continue;
+                bool text_child = false;
+                for (auto *part : spin->GetChildren())
+                    if (auto *text = wxDynamicCast(part, wxTextCtrl)) {
+                        text->SetValue("2.3");
+                        text_child = true;
+                    }
+                if (!text_child)
+                    spin->SetValue(wxString("2.3"));
+                wxCommandEvent enter(wxEVT_TEXT_ENTER, spin->GetId());
+                enter.SetEventObject(spin);
+                enter.SetString("2.3");
+                spin->GetEventHandler()->ProcessEvent(enter);
+                CHECK(dialog->IsModal() && std::abs(spin->GetValue() - 2.3) < 0.001);
+            }
             auto *add = wxWindow::FindWindowById(AssignmentTable::AddRgbwId, dialog);
             CHECK(add);
             wxCommandEvent click(wxEVT_BUTTON, add->GetId());
@@ -87,6 +109,26 @@ class EditorTestApp final : public wxApp {
                 if (auto *d = wxDynamicCast(window, wxDialog))
                     dialog = d;
             CHECK(dialog);
+            // Windows generic double-spin caches its value until focus loss. Enter must
+            // confirm the visible edit text, even when UI simulation is unavailable.
+            for (auto *child : dialog->GetChildren()) {
+                auto *spin = wxDynamicCast(child, wxSpinCtrlDouble);
+                if (!spin)
+                    continue;
+                bool text_child = false;
+                for (auto *part : spin->GetChildren())
+                    if (auto *text = wxDynamicCast(part, wxTextCtrl)) {
+                        text->SetValue("2.3");
+                        text_child = true;
+                    }
+                if (!text_child)
+                    spin->SetValue(wxString("2.3"));
+                wxCommandEvent enter(wxEVT_TEXT_ENTER, spin->GetId());
+                enter.SetEventObject(spin);
+                enter.SetString("2.3");
+                spin->GetEventHandler()->ProcessEvent(enter);
+                CHECK(dialog->IsModal() && std::abs(spin->GetValue() - 2.3) < 0.001);
+            }
             auto *add = wxWindow::FindWindowById(AssignmentTable::AddRgbwId, dialog);
             CHECK(add);
             wxCommandEvent click(wxEVT_BUTTON, add->GetId());
@@ -97,6 +139,7 @@ class EditorTestApp final : public wxApp {
         CHECK(EditProfileElement(nullptr, profile, 6));
         CHECK(profile.buttons[1].controls.size() == 5);
         CHECK(profile.buttons[1].controls[0].value == 128);
+        CHECK(profile.buttons[1].fade_in_ms == 2300 && profile.buttons[1].fade_out_ms == 2300);
         auto *frame = new wxFrame(nullptr, wxID_ANY, "Cue input test");
         std::vector<bool> edges;
         auto *button = new CueButton(frame, [&](bool down) { edges.push_back(down); });
