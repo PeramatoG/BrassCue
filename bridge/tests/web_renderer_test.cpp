@@ -13,10 +13,12 @@ class RendererTestApp final : public wxApp {
                              wxSize(900, 760));
         brasscue::ControllerActions actions;
         actions.encoder_delta = [this](std::size_t i, int delta) {
-            session_.encoder_delta(i, delta, 0);
+            session_.encoder_delta(i, delta, ticks_ * 100);
         };
-        actions.fader = [this](std::uint8_t value) { session_.fader(value); };
-        actions.button = [this](std::size_t i, bool down) { session_.button(i, down, 0); };
+        actions.fader = [this](std::uint8_t value) { session_.fader(value, ticks_ * 100); };
+        actions.button = [this](std::size_t i, bool down) {
+            session_.button(i, down, ticks_ * 100);
+        };
         actions.release = [this] {
             ++releases_;
             session_.release_all(0);
@@ -111,21 +113,26 @@ class RendererTestApp final : public wxApp {
     }
     void Tick() {
         CHECK(++ticks_ < 200);
+        session_.advance(ticks_ * 100);
         brasscue::FourDigitDisplay display;
         display.set_master(session_.state().master);
-        panel_->Apply(brasscue::make_snapshot(session_, display, 0, "Renderer test"));
+        panel_->Apply(brasscue::make_snapshot(session_, display, ticks_ * 100, "Renderer test"));
         if (pending_)
             return;
         if (phase_ == 0 && ready_count_ == 1) {
             auto profile = session_.profile();
             profile.button_labels[1] = "SALA <50> ámbar";
+            profile.buttons[0].kill = profile.buttons[1].kill = false;
+            profile.buttons[1].fade_in_ms = 1000;
             session_.configure(profile);
-            RunPanelScript(*browser_, "document.getElementById('cue-1').click();");
+            RunPanelScript(*browser_, "document.getElementById('cue-0').click();"
+                                      "document.getElementById('cue-1').click();");
             phase_ = 1;
         } else if (phase_ == 1) {
             Query("document.getElementById('fader').value==='128' && "
                   "document.getElementById('display').textContent.trim()==='50' && "
                   "document.getElementById('cue-1').textContent==='SALA <50> ámbar' && "
+                  "document.getElementById('cue-0').getAttribute('aria-pressed')==='false' && "
                   "document.getElementById('cue-1').getAttribute('aria-pressed')==='true' ? 'ok' : "
                   "'wait'");
         } else if (phase_ == 2 && ready_count_ == 2) {
