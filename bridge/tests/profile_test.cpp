@@ -1,20 +1,36 @@
-#include "../src/profile_io.hpp"
+// BrassCue - GPL-3.0. See LICENSE for terms and warranty disclaimer.
 #include "../src/controller_session.hpp"
+#include "../src/profile_io.hpp"
 #include "check.hpp"
 int main() {
- using namespace brasscue;
- ControlProfile p; p.encoder_labels[0]="Rojo ámbar";
- p.encoders[0]={{{1,23},255},{{2,8},128},{{3,128},0},{{32768,512},42}};
- auto text=serialize_profile(p);
- CHECK(serialize_profile(parse_profile(text))==text);
- for (auto bad:{text+"garbage",std::string("BRASSCUE 2"),text.substr(0,30)}) {
-  bool rejected=false;try{parse_profile(bad);}catch(const std::exception&){rejected=true;}CHECK(rejected);
- }
- ControllerSession session; const auto before=serialize_profile(session.profile());
- p.encoders[0].push_back(p.encoders[0][0]);
- bool rejected=false;try{session.configure(p);}catch(const std::exception&){rejected=true;}
- CHECK(rejected && serialize_profile(session.profile())==before);
- auto path=std::filesystem::temp_directory_path()/"brasscue-profile-test.bcue";
- save_profile(path,session.profile()); save_profile(path,session.profile());
- CHECK(serialize_profile(load_profile(path))==before); std::filesystem::remove(path);
+    using namespace brasscue;
+    ControlProfile p;
+    p.encoder_labels[0] = "Rojo ámbar";
+    p.encoders[0] = {{{1, 23}, 255}, {{2, 8}, 128}, {{3, 128}, 0}, {{32768, 512}, 42}};
+    auto text = serialize_profile(p);
+    CHECK(serialize_profile(parse_profile(text)) == text);
+    for (auto bad : {text + "garbage", std::string("BRASSCUE 2"), text.substr(0, 30)}) {
+        bool rejected = false;
+        try {
+            parse_profile(bad);
+        } catch (const std::exception &) {
+            rejected = true;
+        }
+        CHECK(rejected);
+    }
+    ControllerSession session;
+    const auto before = serialize_profile(session.profile());
+    p.encoders[0].push_back(p.encoders[0][0]);
+    bool rejected = false;
+    try {
+        session.configure(p);
+    } catch (const std::exception &) {
+        rejected = true;
+    }
+    CHECK(rejected && serialize_profile(session.profile()) == before);
+    auto path = std::filesystem::temp_directory_path() / "brasscue-profile-test.bcue";
+    save_profile(path, session.profile());
+    save_profile(path, session.profile());
+    CHECK(serialize_profile(load_profile(path)) == before);
+    std::filesystem::remove(path);
 }

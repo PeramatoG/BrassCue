@@ -1,3 +1,4 @@
+// BrassCue - GPL-3.0. See LICENSE for terms and warranty disclaimer.
 #include "../src/bridge_core.hpp"
 
 #include "check.hpp"
@@ -26,11 +27,15 @@ int main() {
 
     state.master = 0;
     const auto blackout = build_artdmx(state, 0);
-    for (std::size_t i = 18; i < blackout.size(); ++i) CHECK(blackout[i] == 0);
+    for (std::size_t i = 18; i < blackout.size(); ++i)
+        CHECK(blackout[i] == 0);
 
     bool rejected = false;
-    try { (void)build_artdmx(state, 32768); }
-    catch (const std::invalid_argument&) { rejected = true; }
+    try {
+        (void)build_artdmx(state, 32768);
+    } catch (const std::invalid_argument &) {
+        rejected = true;
+    }
     CHECK(rejected);
     return 0;
 }

@@ -9,8 +9,8 @@
 #include <windows.h>
 #endif
 namespace brasscue {
-std::string serialize_profile(const ControlProfile& profile);
-ControlProfile parse_profile(const std::string& text);
-void save_profile(const std::filesystem::path& path,const ControlProfile& profile);
-ControlProfile load_profile(const std::filesystem::path& path);
-}
+std::string serialize_profile(const ControlProfile &profile);
+ControlProfile parse_profile(const std::string &text);
+void save_profile(const std::filesystem::path &path, const ControlProfile &profile);
+ControlProfile load_profile(const std::filesystem::path &path);
+} // namespace brasscue

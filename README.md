@@ -2,14 +2,14 @@
 
 **Open-source steampunk RGBW lighting controller** — classic Arduino Uno hardware, a desktop Bridge and future MIDI/OSC output options.
 
-> Early prototype. The console Bridge supports a tested BC1 USB serial handshake with an Arduino Uno; the graphical simulator is software-only and the complete hardware controller is not ready yet.
+> Bench-test prototype. Windows BC1 CLI and a wxWidgets desktop simulator share a multi-universe cue engine; physical display drivers and electrical validation remain pending.
 
 ## Hardware plan
 
 - 4 endless rotary encoders for red, green, blue and white
 - Bourns 100 mm fader for grandmaster
 - 3 mechanical, typewriter-style buttons
-- ST7735 1.44-inch color TFT and a yellow TM1637 numeric/hex display
+- ST7735 1.44-inch color TFT and a yellow TM1637 four-character percent display
 - Classic Arduino Uno connected to the PC by USB serial (no native USB-MIDI modification)
 
 See [hardware selection](docs/HARDWARE.md) and [architecture](docs/ARCHITECTURE.md). No electrical pin mapping has been finalized.
@@ -44,26 +44,20 @@ quit
 brasscue-bridge --simulate --target 127.0.0.1 --universe 0
 ```
 
-No Art-Net discovery or broadcast is performed. This is **not** a production lighting controller: continuous refresh, disconnect/failsafe behavior, channel configuration, Arduino firmware and the serial protocol are pending.
+Output refreshes at approximately 25 Hz while enabled; normal stop attempts zero frames. This is **not** a production lighting controller: UDP delivery, process-loss behavior and electrical/hardware readiness are not guaranteed. No discovery or implicit broadcast.
 
-## Windows graphical simulator (wxWidgets)
 
-An optional dark-themed desktop simulator is available as `brasscue-gui`, featuring RGBW controls, fine adjustments, grandmaster, numerical output, color preview, three virtual buttons and explicit opt-in Art-Net transmission.
+## Desktop and profiles
 
-Build it using the **existing classic vcpkg wxWidgets** installation with `-DBRASSCUE_BUILD_GUI=ON`. It is not part of the default headless build. See [GUI build guide](docs/GUI.md) and [BC1 serial protocol](docs/SERIAL_PROTOCOL.md).
+The optional wxWidgets GUI has a three-column physical layout, rotary RGBW
+controls, vertical fader, temporary encoder/GM readout and configurable TFT.
+The default SALA 100/50/0 buttons are exclusive Toggle cues on provisional
+patch 1.5; labels, targets, Flash/Toggle, Kill and fades are editable.
+Multi-universe profiles can be imported/exported without saving live output.
+GUI starts in simulation with Art-Net OFF.
 
-## Layout
-
-```text
-AGENTS.md              Development instructions for Codex/agents
-bridge/                Portable C++ core, console Bridge, wxWidgets GUI and tests
-firmware/              Arduino implementation (planned)
-docs/                  Hardware selection and software architecture
-.github/workflows/     Windows/Linux Bridge checks
-```
-
-## Project status and license
-
-Initial development; contributions and testing are welcome after the hardware is verified.
-
-Software is licensed under the **GNU GPL v3.0** (see [LICENSE](LICENSE)). Future mechanical/electronic design files may use a separate open-hardware license.
+See [GUI builds and manual checks](docs/GUI.md),
+[architecture and output contracts](docs/ARCHITECTURE.md),
+[portable profile v1](docs/PROFILES.md), and
+[BC1 protocol](docs/SERIAL_PROTOCOL.md). Python 3 runs the CLI integration check;
+all C++ test checks remain active in Debug and Release.

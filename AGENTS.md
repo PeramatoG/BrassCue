@@ -19,8 +19,8 @@
 - Art-Net is the first output transport. MIDI, OSC and sACN are potential future outputs, not current features.
 - Separate controller state, transport serialization, and user interaction.
 - Do not send Art-Net by default. Require an explicit target IP when running the simulator.
-- State is 8-bit RGBW plus an 8-bit grandmaster. Test scaling and ArtDmx packet serialization.
-- Do not advertise USB serial support, fixture patching, DMX timing, or stage-readiness until implemented and verified.
+- ControllerSession owns one canonical profile and live 8-bit RGBW/fader State; CueEngine is derived. Test scaling, patch, cues and ArtDmx serialization.
+- Windows CLI BC1 and profile patching are implemented; GUI COM, physical display drivers and stage-readiness are not verified.
 
 ## GUI direction
 - Use wxWidgets (wx::core / wx::base) from the user's existing classic vcpkg x64-windows installation.
@@ -35,3 +35,15 @@
 - Include unit tests for value scaling and Art-Net framing when editing those areas.
 - Make no wiring or electrical-safety claims without checking the actual modules and documentation.
 - Keep GitHub Actions green before merging. Use feature branches/PRs rather than direct work on main.
+
+## Sustainable module policy
+- Follow docs/ARCHITECTURE.md for ownership and dependency direction; keep one source of truth there.
+- MainFrame composes widgets and coordinates services; editors, file workflow, protocol, engine and transport remain separate.
+- Use explicit CMake source lists. Core must not include wxWidgets or Arduino.
+- Every test must execute checks with and without NDEBUG; never put verification or essential side effects in standard assert.
+- Run Debug/Release CTest plus python3 tests/check_source_file_size.py. CI also builds Windows GUI with classic vcpkg.
+- tests/source_file_size_policy.json sets a 600 physical-line maximum; review responsibility around 300–400 lines. No automatic baseline increases.
+- Use concise GPL-3.0 headers without invented attribution; .clang-format defines readable formatting.
+- Keep profiles transactional, preserve untouched target precision on unit changes, keep network OFF on load and explicitly clean abandoned output addresses.
+- Update user documentation when behavior changes. Record unexecuted checks and hardware limitations accurately.
+- Work only on the requested feature branch; agents must never merge, publish a release or write directly to main.

@@ -72,3 +72,7 @@ Testing/
 
 # Visual Studio CMake out-of-source build output (default for Open Folder)
 /out/
+
+# Local classic-vcpkg CI checkout and machine-specific presets
+.ci-vcpkg/
+CMakeUserPresets.json

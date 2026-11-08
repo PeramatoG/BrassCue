@@ -1,10 +1,8 @@
 name: Bridge CI
-
 on:
   push:
-    branches: [main]
+    branches: [main, feature/windows-graphical-simulator]
   pull_request:
-
 jobs:
   bridge:
     runs-on: ${{ matrix.os }}
@@ -12,11 +10,45 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
+        config: [Debug, Release]
     steps:
       - uses: actions/checkout@v4
+      - run: python tests/check_source_file_size.py
       - name: Configure
-        run: cmake -S . -B build -DBUILD_TESTING=ON -DBRASSCUE_BUILD_GUI=OFF
-      - name: Build
-        run: cmake --build build --config Release
-      - name: Tests
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: cmake -S . -B build -DBUILD_TESTING=ON -DBRASSCUE_BUILD_GUI=OFF -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+      - run: cmake --build build --config ${{ matrix.config }} --parallel 4
+      - run: ctest --test-dir build -C ${{ matrix.config }} --output-on-failure --no-tests=error
+  windows-gui:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          ref: '2025.06.13'
+          path: .ci-vcpkg
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .ci-vcpkg/installed
+            .ci-vcpkg/downloads
+          key: windows-wxwidgets-classic-2025.06.13-v1
+      - name: Classic vcpkg wxWidgets
+        shell: pwsh
+        run: |
+          ./.ci-vcpkg/bootstrap-vcpkg.bat -disableMetrics
+          ./.ci-vcpkg/vcpkg.exe install wxwidgets:x64-windows --classic
+      - name: Configure GUI
+        run: cmake -S . -B out/gui -A x64 -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/.ci-vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_TARGET_TRIPLET=x64-windows -DBRASSCUE_BUILD_GUI=ON -DBUILD_TESTING=ON
+      - run: cmake --build out/gui --config Debug --parallel 4
+      - run: ctest --test-dir out/gui -C Debug --output-on-failure --no-tests=error
+      - run: cmake --build out/gui --config Release --parallel 4
+      - run: ctest --test-dir out/gui -C Release --output-on-failure --no-tests=error
+  linux-gui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libwxgtk3.2-dev xvfb
+      - run: cmake -S . -B build -DBRASSCUE_BUILD_GUI=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug
+      - run: cmake --build build --parallel 4
+      - run: ctest --test-dir build --output-on-failure --no-tests=error

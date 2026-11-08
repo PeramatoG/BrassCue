@@ -8,7 +8,7 @@ if(WIN32)
 else()
   set(BRASSCUE_GUI_DEFAULT OFF)
 endif()
-option(BRASSCUE_BUILD_GUI "Build the Windows wxWidgets simulation application" ${BRASSCUE_GUI_DEFAULT})
+option(BRASSCUE_BUILD_GUI "Build the wxWidgets simulation application" ${BRASSCUE_GUI_DEFAULT})
 
 include(CTest)
 add_subdirectory(bridge)

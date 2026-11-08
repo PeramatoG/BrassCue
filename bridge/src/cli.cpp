@@ -1,11 +1,12 @@
+// BrassCue - GPL-3.0. See LICENSE for terms and warranty disclaimer.
 #include "bridge_core.hpp"
-#include "output_session.hpp"
 #include "controller_session.hpp"
+#include "output_session.hpp"
 #include "profile_io.hpp"
 #include "serial_session.hpp"
-#include <thread>
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
+#include <thread>
 #ifdef _WIN32
 #include "serial_port_win.hpp"
 #include <conio.h>
@@ -21,46 +22,72 @@
 #include <stdexcept>
 #include <string>
 
-
 namespace {
 
 using brasscue::OutputSession;
-std::uint64_t now_ms() { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
+std::uint64_t now_ms() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::steady_clock::now().time_since_epoch())
+        .count();
+}
 brasscue::ControlProfile cli_profile(std::uint16_t wire) {
     brasscue::ControlProfile p;
-    for(auto& patch:p.encoders) for(auto& a:patch) a.address.universe=wire+1;
-    for(auto& button:p.buttons) for(auto& a:button.assignments) a.address.universe=wire+1;
+    for (auto &patch : p.encoders)
+        for (auto &a : patch)
+            a.address.universe = wire + 1;
+    for (auto &button : p.buttons)
+        for (auto &a : button.assignments)
+            a.address.universe = wire + 1;
     return p;
 }
 
 class RefreshLoop {
-public:
-    RefreshLoop(OutputSession* output,const brasscue::CueEngine& engine):worker_([this,output,&engine]{
-        std::unique_lock<std::mutex> lock(mutex);
-        while(!stop_) {
-            if(output)try{output->send(engine,now_ms());}catch(const std::exception& e){
-                std::cerr<<"Art-Net refresh failed: "<<e.what()<<"\n";
-                try{output->stop();}catch(...){}
-            }
-            cv_.wait_for(lock,std::chrono::milliseconds(40),[this]{return stop_;});
+  public:
+    RefreshLoop(OutputSession *output, const brasscue::CueEngine &engine)
+        : worker_([this, output, &engine] {
+              std::unique_lock<std::mutex> lock(mutex);
+              while (!stop_) {
+                  if (output)
+                      try {
+                          output->send(engine, now_ms());
+                      } catch (const std::exception &e) {
+                          std::cerr << "Art-Net refresh failed: " << e.what() << "\n";
+                          try {
+                              output->stop();
+                          } catch (...) {
+                          }
+                      }
+                  cv_.wait_for(lock, std::chrono::milliseconds(40), [this] { return stop_; });
+              }
+          }) {}
+    ~RefreshLoop() {
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            stop_ = true;
         }
-    }){}
-    ~RefreshLoop(){{std::lock_guard<std::mutex> lock(mutex);stop_=true;}cv_.notify_all();worker_.join();}
+        cv_.notify_all();
+        worker_.join();
+    }
     std::mutex mutex;
-private:
-    bool stop_=false;std::condition_variable cv_;std::thread worker_;
+
+  private:
+    bool stop_ = false;
+    std::condition_variable cv_;
+    std::thread worker_;
 };
 
-unsigned parse_uint(const std::string& text, unsigned max) {
+unsigned parse_uint(const std::string &text, unsigned max) {
     std::size_t end = 0;
     const auto number = std::stoul(text, &end, 0);
-    if (end != text.size() || number > max) throw std::invalid_argument("Value out of range: " + text);
+    if (end != text.size() || number > max)
+        throw std::invalid_argument("Value out of range: " + text);
     return static_cast<unsigned>(number);
 }
 
-void show(const brasscue::State& state) {
+void show(const brasscue::State &state) {
     std::cout << "Raw RGBW:";
-    for (const auto value : state.rgbw) std::cout << " " << static_cast<int>(value);
+    for (const auto value : state.rgbw)
+        std::cout << " " << static_cast<int>(value);
     std::cout << " | Grandmaster: " << static_cast<int>(state.master) << " | Output RGBW:";
     for (const auto value : state.rgbw)
         std::cout << " " << static_cast<int>(brasscue::apply_master(value, state.master));
@@ -69,33 +96,36 @@ void show(const brasscue::State& state) {
 
 void usage() {
     std::cout << "BrassCue Bridge - simulated controls (no Arduino required)\n"
-              << "Usage: brasscue-bridge [--simulate | --port COM3] [--ignore-gm] [--target IPv4] [--universe 0..32767]\n"
+              << "Usage: brasscue-bridge [--simulate | --port COM3] [--ignore-gm] [--target IPv4] "
+                 "[--universe 0..32767]\n"
               << "No network traffic unless --target is specified. UDP Art-Net port 6454.\n"
-              << "Commands: r/g/b/w/m <0..255> (0xFF also works), show, send, btn <0..2> <0|1>, load <path>, help, quit\n";
+              << "Commands: r/g/b/w/m <0..255> (0xFF also works), show, send, btn <0..2> <0|1>, "
+                 "load <path>, help, quit\n";
 }
 
-
 #ifdef _WIN32
-int run_serial(const std::string& port, OutputSession* udp,
-               const std::string& target, std::uint16_t universe, bool ignore_gm) {
+int run_serial(const std::string &port, OutputSession *udp, const std::string &target,
+               std::uint16_t universe, bool ignore_gm) {
     brasscue::SerialPort serial(port);
     brasscue::ControllerSession session;
     session.configure(cli_profile(universe));
-    const auto& state=session.state();
+    const auto &state = session.state();
     std::cout << "BrassCue USB bridge on " << port
               << " (115200 baud). Close Arduino Serial Monitor. Press Q to quit.\n";
     std::cout << (ignore_gm ? "Floating grandmaster input ignored.\n"
-                           : "Grandmaster input enabled.\n");
+                            : "Grandmaster input enabled.\n");
     // The Uno announces READY after resetting when the COM port opens.
     // Only request HELLO if that spontaneous announcement never arrives.
     brasscue::SerialHandshake handshake(now_ms());
     std::string line;
-    std::uint64_t last_output=0;
+    std::uint64_t last_output = 0;
     while (true) {
-        if (handshake.hello_due(now_ms())) serial.send("BC1 HELLO\n");
+        if (handshake.hello_due(now_ms()))
+            serial.send("BC1 HELLO\n");
         if (_kbhit()) {
             const int key = _getch();
-            if (key == 'q' || key == 'Q') break;
+            if (key == 'q' || key == 'Q')
+                break;
         }
         while (serial.read_line(line)) {
             brasscue::DeviceEvent event;
@@ -104,7 +134,8 @@ int run_serial(const std::string& port, OutputSession* udp,
                 continue;
             }
             if (event.type == brasscue::EventType::Ready) {
-                if (!handshake.ready(now_ms())) continue;
+                if (!handshake.ready(now_ms()))
+                    continue;
                 session.release_all(now_ms());
                 serial.send(brasscue::serialize_state(state));
                 std::cout << "Arduino ready: sent initial RGBW/master state.\n";
@@ -112,21 +143,23 @@ int run_serial(const std::string& port, OutputSession* udp,
                 std::cout << "Arduino acknowledged state.\n";
             } else if (handshake.connected()) {
                 if (event.type == brasscue::EventType::Button) {
-                    std::cout << "Button " << event.index
-                              << (event.value ? " DOWN\n" : " UP\n");
+                    std::cout << "Button " << event.index << (event.value ? " DOWN\n" : " UP\n");
                 }
                 if (session.event(event, ignore_gm, now_ms())) {
                     show(state);
                     serial.send(brasscue::serialize_state(state));
                     if (udp) {
-                        udp->send(session.engine(),now_ms());
-                        std::cout << "[ArtDmx sent to " << target
-                                  << ":6454; port-address " << universe << "]\n";
+                        udp->send(session.engine(), now_ms());
+                        std::cout << "[ArtDmx sent to " << target << ":6454; port-address "
+                                  << universe << "]\n";
                     }
                 }
             }
         }
-        if(udp && now_ms()-last_output>=40) { udp->send(session.engine(),now_ms());last_output=now_ms(); }
+        if (udp && now_ms() - last_output >= 40) {
+            udp->send(session.engine(), now_ms());
+            last_output = now_ms();
+        }
         Sleep(5);
     }
     return 0;
@@ -135,7 +168,7 @@ int run_serial(const std::string& port, OutputSession* udp,
 
 } // namespace
 
-int run_cli(int argc, char** argv) {
+int run_cli(int argc, char **argv) {
     try {
         std::string target;
         std::string serial_port;
@@ -143,11 +176,24 @@ int run_cli(int argc, char** argv) {
         std::uint16_t universe = 0;
         for (int i = 1; i < argc; ++i) {
             const std::string arg = argv[i];
-            if (arg == "--help" || arg == "-h") { usage(); return 0; }
-            if (arg == "--simulate") continue;
-            if (arg == "--ignore-gm") { ignore_gm = true; continue; }
-            if (arg == "--port" && i + 1 < argc) { serial_port = argv[++i]; continue; }
-            if (arg == "--target" && i + 1 < argc) { target = argv[++i]; continue; }
+            if (arg == "--help" || arg == "-h") {
+                usage();
+                return 0;
+            }
+            if (arg == "--simulate")
+                continue;
+            if (arg == "--ignore-gm") {
+                ignore_gm = true;
+                continue;
+            }
+            if (arg == "--port" && i + 1 < argc) {
+                serial_port = argv[++i];
+                continue;
+            }
+            if (arg == "--target" && i + 1 < argc) {
+                target = argv[++i];
+                continue;
+            }
             if (arg == "--universe" && i + 1 < argc) {
                 universe = static_cast<std::uint16_t>(parse_uint(argv[++i], 32767));
                 continue;
@@ -156,7 +202,10 @@ int run_cli(int argc, char** argv) {
         }
 
         std::unique_ptr<OutputSession> udp;
-        if (!target.empty()) { udp = std::make_unique<OutputSession>(); udp->enable(target); }
+        if (!target.empty()) {
+            udp = std::make_unique<OutputSession>();
+            udp->enable(target);
+        }
         if (!serial_port.empty()) {
 #ifdef _WIN32
             return run_serial(serial_port, udp.get(), target, universe, ignore_gm);
@@ -167,7 +216,7 @@ int run_cli(int argc, char** argv) {
 
         brasscue::ControllerSession session;
         session.configure(cli_profile(universe));
-        const auto& state=session.state();
+        const auto &state = session.state();
         usage();
         show(state);
 
@@ -175,34 +224,52 @@ int run_cli(int argc, char** argv) {
             if (!udp) {
                 std::cout << "[simulation only - network disabled]\n";
             } else {
-                udp->send(session.engine(),now_ms());
-                std::cout << "[sent ArtDmx to " << target << ":6454, port-address "
-                          << universe << "]\n";
+                udp->send(session.engine(), now_ms());
+                std::cout << "[sent ArtDmx to " << target << ":6454, port-address " << universe
+                          << "]\n";
             }
         };
 
-        RefreshLoop refresh(udp.get(),session.engine());
+        RefreshLoop refresh(udp.get(), session.engine());
         std::string line;
         while (std::cout << "> " && std::getline(std::cin, line)) {
             std::lock_guard<std::mutex> lock(refresh.mutex);
             std::istringstream input(line);
             std::string command, value, trailing;
-            if (!(input >> command)) continue;
-            if (command == "quit" || command == "exit") break;
-            if (command == "help") { usage(); continue; }
-            if (command == "show") { show(state); continue; }
+            if (!(input >> command))
+                continue;
+            if (command == "quit" || command == "exit")
+                break;
+            if (command == "help") {
+                usage();
+                continue;
+            }
+            if (command == "show") {
+                show(state);
+                continue;
+            }
             if (command == "load" && (input >> value) && !(input >> trailing)) {
-                try { session.configure(brasscue::load_profile(value)); emit(); }
-                catch(const std::exception& e) { std::cout << "Profile error: " << e.what() << "\n"; }
+                try {
+                    session.configure(brasscue::load_profile(value));
+                    emit();
+                } catch (const std::exception &e) {
+                    std::cout << "Profile error: " << e.what() << "\n";
+                }
                 continue;
             }
             if (command == "btn") {
-                unsigned index=0,down=0;
-                if((input>>index>>down) && index<3 && down<2 && !(input>>trailing)) {session.button(index,down!=0,now_ms());emit();}
-                else std::cout << "Expected btn <0..2> <0|1>\n";
+                unsigned index = 0, down = 0;
+                if ((input >> index >> down) && index < 3 && down < 2 && !(input >> trailing)) {
+                    session.button(index, down != 0, now_ms());
+                    emit();
+                } else
+                    std::cout << "Expected btn <0..2> <0|1>\n";
                 continue;
             }
-            if (command == "send") { emit(); continue; }
+            if (command == "send") {
+                emit();
+                continue;
+            }
             if (command.size() != 1 || std::string("rgbwm").find(command[0]) == std::string::npos ||
                 !(input >> value) || (input >> trailing)) {
                 std::cout << "Invalid command. Type help.\n";
@@ -210,19 +277,20 @@ int run_cli(int argc, char** argv) {
             }
             try {
                 const auto v = static_cast<std::uint8_t>(parse_uint(value, 255));
-                if (command == "m") session.fader(v);
+                if (command == "m")
+                    session.fader(v);
                 else {
                     const auto channel = std::string("rgbw").find(command[0]);
-                    session.encoder(channel,v);
+                    session.encoder(channel, v);
                 }
                 show(state);
                 emit();
-            } catch (const std::exception& ex) {
+            } catch (const std::exception &ex) {
                 std::cout << "Invalid value: " << ex.what() << "\n";
             }
         }
         return 0;
-    } catch (const std::exception& ex) {
+    } catch (const std::exception &ex) {
         std::cerr << "BrassCue Bridge: " << ex.what() << "\n";
         return 1;
     }

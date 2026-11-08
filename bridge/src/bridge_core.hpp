@@ -1,3 +1,4 @@
+// BrassCue - GPL-3.0. See LICENSE for terms and warranty disclaimer.
 #pragma once
 
 #include <array>
@@ -21,7 +22,7 @@ inline std::uint8_t apply_master(std::uint8_t raw, std::uint8_t master) {
 }
 
 // Build one Art-Net ArtDmx packet. The first four DMX slots carry R/G/B/W.
-inline std::array<std::uint8_t, kPacketBytes> build_artdmx(const State& state,
+inline std::array<std::uint8_t, kPacketBytes> build_artdmx(const State &state,
                                                            std::uint16_t port_address) {
     if (port_address > 32767) {
         throw std::invalid_argument("Art-Net Port-Address must be 0..32767");
@@ -29,8 +30,9 @@ inline std::array<std::uint8_t, kPacketBytes> build_artdmx(const State& state,
 
     std::array<std::uint8_t, kPacketBytes> packet{};
     constexpr std::uint8_t id[] = {'A', 'r', 't', '-', 'N', 'e', 't', 0};
-    for (std::size_t i = 0; i < sizeof(id); ++i) packet[i] = id[i];
-    packet[8] = 0x00;  // ArtDmx opcode, little endian (0x5000)
+    for (std::size_t i = 0; i < sizeof(id); ++i)
+        packet[i] = id[i];
+    packet[8] = 0x00; // ArtDmx opcode, little endian (0x5000)
     packet[9] = 0x50;
     packet[10] = 0x00; // Protocol version 14, big endian
     packet[11] = 0x0e;

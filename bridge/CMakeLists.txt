@@ -67,3 +67,9 @@ if(BUILD_TESTING)
   endif()
   add_test(NAME brasscue-session COMMAND brasscue-session-test)
 endif()
+
+if(BUILD_TESTING)
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  add_test(NAME brasscue-cli-smoke COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_SOURCE_DIR}/tests/cli_smoke.py $<TARGET_FILE:brasscue-bridge>)
+endif()

@@ -1,8 +1,10 @@
+// BrassCue - GPL-3.0. See LICENSE for terms and warranty disclaimer.
 #pragma once
 
 // Shared UDP Art-Net sender for the CLI and wxWidgets desktop front end.
 // No implicit broadcast or transmission: callers explicitly create a target.
 #include "bridge_core.hpp"
+#include "network_config.hpp"
 #include <array>
 #include <cstdint>
 #include <stdexcept>
@@ -20,8 +22,9 @@
 namespace brasscue {
 
 class UdpTarget {
-public:
-    explicit UdpTarget(const std::string& ipv4, bool broadcast = false) {
+  public:
+    explicit UdpTarget(const std::string &ipv4, bool broadcast = false) {
+        validate_target(ipv4, broadcast);
 #ifdef _WIN32
         WSADATA data{};
         if (WSAStartup(MAKEWORD(2, 2), &data) != 0)
@@ -43,53 +46,63 @@ public:
             throw std::runtime_error("Unable to create UDP socket");
         }
 #else
-        if (socket_ < 0) throw std::runtime_error("Unable to create UDP socket");
+        if (socket_ < 0)
+            throw std::runtime_error("Unable to create UDP socket");
 #endif
         if (broadcast) {
             const int enabled = 1;
 #ifdef _WIN32
             if (setsockopt(socket_, SOL_SOCKET, SO_BROADCAST,
-                           reinterpret_cast<const char*>(&enabled), sizeof(enabled)) != 0)
-                { close_socket(); throw std::runtime_error("Unable to enable UDP broadcast"); }
+                           reinterpret_cast<const char *>(&enabled), sizeof(enabled)) != 0) {
+                close_socket();
+                throw std::runtime_error("Unable to enable UDP broadcast");
+            }
 #else
-            if (setsockopt(socket_, SOL_SOCKET, SO_BROADCAST, &enabled, sizeof(enabled)) != 0)
-                { close_socket(); throw std::runtime_error("Unable to enable UDP broadcast"); }
+            if (setsockopt(socket_, SOL_SOCKET, SO_BROADCAST, &enabled, sizeof(enabled)) != 0) {
+                close_socket();
+                throw std::runtime_error("Unable to enable UDP broadcast");
+            }
 #endif
         }
     }
 
-    UdpTarget(const UdpTarget&) = delete;
-    UdpTarget& operator=(const UdpTarget&) = delete;
+    UdpTarget(const UdpTarget &) = delete;
+    UdpTarget &operator=(const UdpTarget &) = delete;
 
-    ~UdpTarget() { close_socket(); }
+    ~UdpTarget() {
+        close_socket();
+    }
 
-private:
+  private:
     void close_socket() {
 #ifdef _WIN32
-        if (socket_ != INVALID_SOCKET) closesocket(socket_);
+        if (socket_ != INVALID_SOCKET)
+            closesocket(socket_);
         WSACleanup();
 #else
-        if (socket_ >= 0) close(socket_);
+        if (socket_ >= 0)
+            close(socket_);
 #endif
     }
 
-public:
-    void send(const std::array<std::uint8_t, kPacketBytes>& packet) const {
+  public:
+    void send(const std::array<std::uint8_t, kPacketBytes> &packet) const {
 #ifdef _WIN32
-        const auto count = ::sendto(socket_, reinterpret_cast<const char*>(packet.data()),
-                                   static_cast<int>(packet.size()), 0,
-                                   reinterpret_cast<const sockaddr*>(&address_), sizeof(address_));
+        const auto count = ::sendto(
+            socket_, reinterpret_cast<const char *>(packet.data()), static_cast<int>(packet.size()),
+            0, reinterpret_cast<const sockaddr *>(&address_), sizeof(address_));
         if (count != static_cast<int>(packet.size()))
             throw std::runtime_error("Art-Net sendto failed");
 #else
-        const auto count = ::sendto(socket_, packet.data(), packet.size(), 0,
-                                   reinterpret_cast<const sockaddr*>(&address_), sizeof(address_));
+        const auto count =
+            ::sendto(socket_, packet.data(), packet.size(), 0,
+                     reinterpret_cast<const sockaddr *>(&address_), sizeof(address_));
         if (count != static_cast<ssize_t>(packet.size()))
             throw std::runtime_error("Art-Net sendto failed");
 #endif
     }
 
-private:
+  private:
 #ifdef _WIN32
     SOCKET socket_ = INVALID_SOCKET;
 #else

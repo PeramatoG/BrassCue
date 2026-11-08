@@ -9,7 +9,7 @@ namespace brasscue {
 struct Address {
     std::uint16_t universe = 1; // User-facing, 1-based Art-Net port address
     std::uint16_t channel = 1;  // DMX 1..512
-    bool operator<(const Address& rhs) const {
+    bool operator<(const Address &rhs) const {
         return universe < rhs.universe || (universe == rhs.universe && channel < rhs.channel);
     }
 };
@@ -33,11 +33,13 @@ struct FaderConfig {
 inline bool valid_address(Address a) {
     return a.universe >= 1 && a.universe <= 32768 && a.channel >= 1 && a.channel <= 512;
 }
-inline void validate(const std::vector<Assignment>& entries) {
+inline void validate(const std::vector<Assignment> &entries) {
+    if (entries.size() > 512)
+        throw std::invalid_argument("At most 512 assignments per control");
     std::map<Address, bool> used;
-    for (const auto& e : entries) {
+    for (const auto &e : entries) {
         if (!valid_address(e.address) || !used.emplace(e.address, true).second)
             throw std::invalid_argument("Invalid or duplicate universe.channel assignment");
     }
 }
-}
+} // namespace brasscue

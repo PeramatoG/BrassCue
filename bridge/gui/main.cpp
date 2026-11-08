@@ -1,11 +1,12 @@
+// BrassCue - GPL-3.0. See LICENSE for terms and warranty disclaimer.
 #include <wx/wx.h>
 
-wxFrame* CreateBrassCueFrame();
+wxFrame *CreateBrassCueFrame();
 
 class BrassCueApp final : public wxApp {
-public:
+  public:
     bool OnInit() override {
-        auto* frame = CreateBrassCueFrame();
+        auto *frame = CreateBrassCueFrame();
         frame->Show();
         return true;
     }
