@@ -64,20 +64,25 @@ ColorPreview::ColorPreview(wxWindow *parent)
         dc.Clear();
         dc.SetTextForeground(wxColour(238, 232, 219));
         dc.DrawText(wxString::FromUTF8(profile_.screen_title), 8, 6);
+        const auto size = GetClientSize();
+        const int side = std::max(1, std::min(size.x - 16, size.y - 40));
+        const int x = (size.x - side) / 2, y = 32;
+        dc.SetPen(wxPen(wxColour(205, 161, 84), 1));
+        dc.SetBrush(wxBrush(wxColour(22, 24, 29)));
+        dc.DrawRectangle(x, y, side, side);
         const int master = profile_.fader.grandmaster ? state_.master : 255;
         auto scaled = [&](int i) { return int(brasscue::apply_master(state_.rgbw[i], master)); };
         if (profile_.screen_view == brasscue::ScreenView::Color) {
             dc.SetBrush(wxBrush(wxColour(std::min(255, scaled(0) + scaled(3)),
                                          std::min(255, scaled(1) + scaled(3)),
                                          std::min(255, scaled(2) + scaled(3)))));
-            dc.SetPen(*wxTRANSPARENT_PEN);
-            dc.DrawRectangle(8, 32, GetClientSize().x - 16, GetClientSize().y - 60);
+            dc.DrawRectangle(x, y, side, side);
         } else {
             for (int i = 0; i < 4; ++i) {
-                dc.DrawText(wxString::FromUTF8(profile_.encoder_labels[i]), 8, 32 + i * 30);
+                dc.DrawText(wxString::FromUTF8(profile_.encoder_labels[i]), x + 6, y + 8 + i * 30);
                 dc.SetBrush(wxBrush(wxColour(205, 161, 84)));
-                dc.DrawRectangle(52, 34 + i * 30,
-                                 scaled(i) * std::max(1, GetClientSize().x - 60) / 255, 16);
+                dc.DrawRectangle(x + 44, y + 10 + i * 30, scaled(i) * std::max(1, side - 52) / 255,
+                                 16);
             }
         }
     });

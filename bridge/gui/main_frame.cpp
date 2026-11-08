@@ -86,7 +86,7 @@ class MainFrame final : public wxFrame {
             right->Add(buttons_[i], 1, wxEXPAND | wxTOP | wxBOTTOM, 8);
             BindEdit(buttons_[i], i + 5);
         }
-        front->Add(right, 2, wxEXPAND | wxALL, 16);
+        front->Add(right, 1, wxEXPAND | wxALL, 16);
         root->Add(front, 1, wxEXPAND);
         auto *network = new wxBoxSizer(wxHORIZONTAL);
         network->Add(Label(this, "Art-Net IPv4"), 0, wxALIGN_CENTER_VERTICAL | wxALL, 6);
