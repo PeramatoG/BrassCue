@@ -79,11 +79,7 @@ private:
                                         clamp(scaled(2) + w))));
         dc.DrawRoundedRectangle(x, y, side, side, 8);
     }
-    brasscue::ControlProfile profile_;
     brasscue::State state_;
-    std::array<wxStaticText*, 4> encoderLabels_{};
-    std::array<wxButton*, 3> buttons_{};
-    wxStaticText* masterLabel_ = nullptr;
 };
 
 class MainFrame final : public wxFrame {
@@ -160,7 +156,7 @@ public:
         master->Bind(wxEVT_RIGHT_UP, [this](wxMouseEvent&) { EditMaster(); });
         masterLabel_->Bind(wxEVT_RIGHT_UP, [this](wxMouseEvent&) { EditMaster(); });
         masterHeading->AddStretchSpacer();
-        masterValue_ = MakeLabel(master, "255 / FF", 12, true);
+        masterValue_ = MakeLabel(master, " 100", 12, true);
         masterValue_->SetForegroundColour(kBrass);
         masterHeading->Add(masterValue_);
         masterBox->Add(masterHeading, 0, wxEXPAND | wxALL, 10);
@@ -224,7 +220,7 @@ public:
         content->Add(output, 2, wxEXPAND);
         outer->Add(content, 1, wxEXPAND | wxALL, 24);
         displayTimer_.SetOwner(this);
-        Bind(wxEVT_TIMER, [this](wxTimerEvent&) { UpdateFourDigit(); });
+        Bind(wxEVT_TIMER, [this](wxTimerEvent&) { UpdateFourDigit(); }, displayTimer_.GetId());
         displayTimer_.Start(100);
         engine_.configure_fader(faderConfig_);
         for (int i=0;i<3;++i) engine_.configure_button(i,buttonConfigs_[i]);
@@ -426,6 +422,10 @@ private:
         }
     }
 
+    brasscue::ControlProfile profile_;
+    std::array<wxStaticText*, 4> encoderLabels_{};
+    std::array<wxButton*, 3> buttons_{};
+    wxStaticText* masterLabel_ = nullptr;
     brasscue::State state_;
     brasscue::FourDigitDisplay display_;
     brasscue::CueEngine engine_;
