@@ -50,6 +50,7 @@ if(BRASSCUE_BUILD_GUI)
   add_library(brasscue-gui-support
     gui/widgets.cpp gui/console_fader.cpp gui/profile_editor.cpp gui/profile_files.cpp
     gui/assignment_table.cpp gui/button_editor.cpp gui/dark_theme.cpp
+    gui/quick_patch.cpp gui/profile_commit.cpp gui/encoder_group_routes.cpp
     gui/network_panel.cpp gui/native_panel.cpp gui/panel_host.cpp ${brasscue_web_source})
   target_compile_features(brasscue-gui-support PUBLIC cxx_std_17)
   target_compile_definitions(brasscue-gui-support PUBLIC NOMINMAX BRASSCUE_ENABLE_WEB_PANEL=$<BOOL:${BRASSCUE_ENABLE_WEB_PANEL}>)
@@ -177,4 +178,22 @@ if(BRASSCUE_BUILD_GUI AND BRASSCUE_ENABLE_WEB_PANEL AND BUILD_TESTING)
   brasscue_copy_web_assets(brasscue-web-renderer-test)
   add_test(NAME brasscue-web-renderer COMMAND brasscue-web-renderer-test)
   set_tests_properties(brasscue-web-renderer PROPERTIES TIMEOUT 30 SKIP_RETURN_CODE 77)
+endif()
+
+if(BUILD_TESTING)
+  add_executable(brasscue-fixture-groups-test tests/fixture_groups_test.cpp)
+  target_compile_features(brasscue-fixture-groups-test PRIVATE cxx_std_17)
+  target_compile_definitions(brasscue-fixture-groups-test PRIVATE TEST_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+  target_link_libraries(brasscue-fixture-groups-test PRIVATE brasscue-profile)
+  if(WIN32)
+    target_link_libraries(brasscue-fixture-groups-test PRIVATE ws2_32)
+  endif()
+  add_test(NAME brasscue-fixture-groups COMMAND brasscue-fixture-groups-test)
+endif()
+
+if(BRASSCUE_BUILD_GUI AND BUILD_TESTING)
+  add_executable(brasscue-gui-quick-patch-test WIN32 tests/gui_quick_patch_test.cpp)
+  target_link_libraries(brasscue-gui-quick-patch-test PRIVATE brasscue-gui-support)
+  add_test(NAME brasscue-gui-quick-patch COMMAND brasscue-gui-quick-patch-test)
+  set_tests_properties(brasscue-gui-quick-patch PROPERTIES TIMEOUT 30)
 endif()

@@ -27,6 +27,18 @@ with tempfile.TemporaryDirectory() as folder:
     r = subprocess.run([exe, '--simulate'], input=f'load {profile}\nr 255\nm 128\nshow\nquit\n', text=True, capture_output=True, check=True, timeout=10)
     if 'Profile error:' in r.stdout or 'Patch fader: 128 | Output RGBW: 128 0 0 0' not in r.stdout:
         raise RuntimeError(r.stdout)
+# A literal v3 group-only patch must also feed CLI monitors and preserve byte mapping.
+with tempfile.TemporaryDirectory() as folder:
+    profile = Path(folder) / 'groups.bcue'
+    legacy = (Path(__file__).resolve().parents[1] / 'bridge/tests/fixtures/manual-v2.bcue').read_text(encoding='utf-8')
+    lines = legacy.splitlines()
+    lines[0] = 'BRASSCUE 3'
+    for index, label in enumerate(('R', 'G', 'B', 'W'), start=2):
+        lines[index] = f'"{label}" 0'
+    profile.write_text('\n'.join(lines) + '\n1\n"CLI GROUP" "GRBW" 4 0 1\n6 1 2\n', encoding='utf-8')
+    r = subprocess.run([exe, '--simulate'], input=f'load {profile}\nr 255\ng 128\nshow\nquit\n', text=True, capture_output=True, check=True, timeout=10)
+    if 'Profile error:' in r.stdout or 'Output RGBW: 255 128 0 0' not in r.stdout:
+        raise RuntimeError(r.stdout)
 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
     sock.bind(('127.0.0.1', 6454))
     sock.settimeout(3)

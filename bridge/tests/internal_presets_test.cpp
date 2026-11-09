@@ -189,6 +189,6 @@ int main() {
     s.fader(255);
     s.button(0, true, 0);
     CHECK(s.engine().render(0)[1][4] == 255 && s.state().master == 255);
-    CHECK(serialize_profile(old).rfind("BRASSCUE 2\n", 0) == 0);
+    CHECK(serialize_profile(old).rfind("BRASSCUE 3\n", 0) == 0);
     CHECK(serialize_profile(parse_profile(serialize_profile(old))) == serialize_profile(old));
 }

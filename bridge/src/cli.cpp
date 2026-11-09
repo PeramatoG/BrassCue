@@ -95,7 +95,7 @@ void show(const brasscue::ControllerSession &session) {
               << int(session.fader_value()) << " | Output RGBW:";
     // For a fan-out patch, monitor the first address per encoder. Values come
     // from the final merged frame, including target scaling, cues and fader role.
-    for (const auto &patch : session.profile().encoders) {
+    for (const auto &patch : session.encoder_patch()) {
         unsigned value = 0;
         if (!patch.empty()) {
             const auto address = patch.front().address;

@@ -28,7 +28,7 @@
 - Design Windows UI with a restrained dark palette and brass accents; favor legibility, resizing and accessible controls over decoration.
 - Keep calculations, Art-Net framing and protocol semantics in shared testable modules, not wx event callbacks.
 - C++ owns effective GM/RGBW, preset ownership, circular gesture math and snapshot diffs. JS is local input/DOM presentation only; retain native fallback and block external navigation.
-- Write profiles v2; import v1 explicitly as DMX actions without reinterpreting SALA labels. New HOUSE defaults are internal GM presets, not channel 1.5.
+- Write profiles v3 with canonical fixture groups; import v1/v2 without inferring groups, and v1 explicitly as DMX actions without reinterpreting SALA labels. New HOUSE defaults are internal GM presets, not channel 1.5.
 - Broadcast requires an active explicit IPv4 NIC and its real mask; bind source/interface, keep Auto unicast and stop output when the route changes. Never test broadcast on a real network implicitly.
 - GUI simulation must not silently claim to be connected to the Uno: USB COM integration is future work.
 - Do not introduce wxWidgets into the portable serial/core unit tests.

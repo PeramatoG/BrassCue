@@ -45,7 +45,7 @@ void patch_in(std::istream &in, std::vector<Assignment> &patch) {
 std::string serialize_profile(const ControlProfile &p) {
     validate(p);
     std::ostringstream out;
-    out << "BRASSCUE 2\n"
+    out << "BRASSCUE 3\n"
         << std::quoted(p.id) << ' ' << std::quoted(p.name) << ' ' << std::quoted(p.layout_id)
         << '\n';
     for (std::size_t i = 0; i < 4; ++i) {
@@ -67,6 +67,13 @@ std::string serialize_profile(const ControlProfile &p) {
     out << std::quoted(p.screen_title) << ' ' << int(p.screen_view) << ' ' << int(p.units) << ' '
         << std::quoted(p.target_ip) << ' ' << p.allow_broadcast << ' '
         << std::quoted(p.network_interface_id) << '\n';
+    out << p.fixture_groups.size() << '\n';
+    for (const auto &group : p.fixture_groups) {
+        out << std::quoted(group.name) << ' ' << std::quoted(group.order) << ' ' << group.stride
+            << ' ' << int(group.boundary) << ' ' << group.blocks.size() << '\n';
+        for (const auto &block : group.blocks)
+            out << block.universe << ' ' << block.address << ' ' << block.count << '\n';
+    }
     return out.str();
 }
 ControlProfile parse_profile(const std::string &text) {
@@ -76,7 +83,7 @@ ControlProfile parse_profile(const std::string &text) {
     std::string magic;
     if (!(in >> magic) || magic != "BRASSCUE")
         throw std::invalid_argument("Unsupported profile version");
-    const auto version = number(in, 2);
+    const auto version = number(in, 3);
     if (version < 1)
         throw std::invalid_argument("Unsupported profile version");
     ControlProfile p;
@@ -118,6 +125,24 @@ ControlProfile parse_profile(const std::string &text) {
     p.allow_broadcast = number(in, 1) != 0;
     if (version >= 2)
         label(in, p.network_interface_id);
+    if (version >= 3) {
+        const auto count = number(in, 64);
+        for (unsigned i = 0; i < count; ++i) {
+            FixtureGroup group;
+            label(in, group.name);
+            label(in, group.order);
+            group.stride = number(in, 512);
+            group.boundary = static_cast<FixtureBoundary>(number(in, 0));
+            const auto blocks = number(in, 64);
+            group.blocks.clear();
+            for (unsigned b = 0; b < blocks; ++b) {
+                const auto universe = number(in, 32768), address = number(in, 512),
+                           n = number(in, 512);
+                group.blocks.push_back({universe, address, n});
+            }
+            p.fixture_groups.push_back(std::move(group));
+        }
+    }
     in >> std::ws;
     if (!in.eof())
         throw std::invalid_argument("Trailing profile data");

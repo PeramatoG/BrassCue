@@ -14,6 +14,9 @@ class ControllerSession {
     const ControlProfile &profile() const {
         return profile_;
     }
+    const EncoderPatch &encoder_patch() const {
+        return encoder_patch_;
+    }
     const State &state() const {
         return state_;
     }
@@ -36,6 +39,7 @@ class ControllerSession {
     }
     void configure(ControlProfile p) {
         validate(p);
+        auto patch = effective_encoder_patch(p);
         CueEngine next({p.buttons.begin(), p.buttons.end()});
         next.configure_fader(p.fader);
         auto next_state = state_;
@@ -44,7 +48,8 @@ class ControllerSession {
         next.set_fader(p.fader.grandmaster ? next_state.master : patch_fader_);
         next.set_master_override(next_state.master);
         for (std::size_t i = 0; i < 4; ++i)
-            next.set_encoder(i, p.encoders[i], state_.rgbw[i]);
+            next.set_encoder(i, patch[i], state_.rgbw[i]);
+        encoder_patch_ = std::move(patch);
         profile_ = std::move(p);
         state_ = next_state;
         engine_ = std::move(next);
@@ -60,7 +65,7 @@ class ControllerSession {
         }
         for (std::size_t i = 0; i < 4; ++i)
             if (previous.rgbw[i] != state_.rgbw[i])
-                engine_.set_encoder(i, profile_.encoders[i], state_.rgbw[i]);
+                engine_.set_encoder(i, encoder_patch_[i], state_.rgbw[i]);
     }
     void encoder_delta(std::size_t i, int delta, std::uint64_t now) {
         if (i >= 4 || delta < -255 || delta > 255)
@@ -73,7 +78,7 @@ class ControllerSession {
         if (i >= 4)
             throw std::out_of_range("Encoder index");
         presets_.manual(static_cast<ControlTarget>(i + 1), profile_.buttons);
-        engine_.set_encoder(i, profile_.encoders[i], value);
+        engine_.set_encoder(i, encoder_patch_[i], value);
         state_.rgbw[i] = value;
     }
     void fader(std::uint8_t value, std::uint64_t now = 0) {
@@ -158,10 +163,11 @@ class ControllerSession {
         engine_.set_fader(fader_value());
         engine_.set_master_override(state_.master);
         for (std::size_t j = 0; j < 4; ++j)
-            engine_.set_encoder(j, profile_.encoders[j], state_.rgbw[j]);
+            engine_.set_encoder(j, encoder_patch_[j], state_.rgbw[j]);
     }
     std::uint8_t patch_fader_ = 255;
     ControlProfile profile_;
+    EncoderPatch encoder_patch_; // Derived only on successful configuration commit.
     State state_;
     CueEngine engine_;
     InternalPresets presets_;
