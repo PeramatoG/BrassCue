@@ -26,9 +26,9 @@ For Ninja omit `-A x64` and specify `-DCMAKE_BUILD_TYPE=Debug` (or Release)
 in separate directories. Windows defaults GUI ON; Linux defaults OFF.
 Linux GUI uses system wxWidgets 3.2 (`libwxgtk3.2-dev`) with
 `cmake -S . -B build-gui -DBRASSCUE_BUILD_GUI=ON -DCMAKE_BUILD_TYPE=Debug`.
-Native GUI configurations run fourteen CTest tests, including real modal editor/button presentation checks and OS keyboard/mouse interaction.
+Native GUI configurations run sixteen CTest tests, including real modal editor/button presentation checks and OS keyboard/mouse interaction.
 OS interaction uses wx UI simulation where enabled, or Win32 SendInput on Windows
-vcpkg builds that disable it; other unsupported backends explicitly skip (77). Headless configurations run twelve. Web builds add an actual embedded-renderer integration test. On Linux run GUI CTest under a display (for example `xvfb-run -a ctest --test-dir build-gui --output-on-failure`). Python 3 is required for test integration. No manifest migration is needed.
+vcpkg builds that disable it; other unsupported backends explicitly skip (77). Headless configurations run thirteen. Web builds add an actual embedded-renderer integration test. On Linux run GUI CTest under a display (for example `xvfb-run -a ctest --test-dir build-gui --output-on-failure`). Python 3 is required for test integration. No manifest migration is needed.
 
 CI includes Windows GUI builds with classic vcpkg and tests in Debug/Release,
 Linux GUI compilation, and four Windows/Linux headless configurations. An added
@@ -172,3 +172,44 @@ Profile operations and limitations are documented in [Profiles](PROFILES.md).
 13. On a machine without WebView2, verify understandable native fallback. With
     WebView2 installed, inspect the dark title/menu/dialog boundaries honestly.
     A green automated check does not replace these Windows visual checks.
+
+## Quick RGBW Patch
+
+Open **Profile → Quick RGBW Patch** (`Ctrl+Shift+P`, or the menu keyboard
+accelerator) in either native or WebView mode. Add a named group such as HOUSE
+PANELS. Set its four-channel order (`RGBW`, `GRBW`, etc.) and stride (default 4).
+Each block row supplies visible universe, starting DMX address and fixture count.
+Add more blocks for other universes. There is no automatic rollover: overflow
+past channel 512 is an error, including a single four-slot fixture at start 510.
+
+**Update group / Preview** validates the entire candidate profile and lists each
+fixture's group, number, universe, start and individual R/G/B/W channel. OK is
+available only after a valid preview; changing fields requires a new preview.
+Selecting another group retains its draft. OK applies all groups together;
+Cancel discards adds, removals and edits. Use Save / export to persist them in a
+v3 profile, and Open / import after restart. Startup still uses the built-in preset.
+
+Manual assignments remain independent. The built-in manual patch occupies 1.1
+through 1.4, so a new block initially starts at 1.5. Choose your actual addresses
+and set the physical fixtures to match separately. Quick Patch never programs
+fixture hardware. If you need group fixtures at 1.1, explicitly remove those
+manual rows in the existing encoder editors first. Group-generated targets are
+255; encoder positions and GM scale every fixture normally. Internal presets
+continue to operate the shared RGBW/GM controls. Existing arbitrary manual
+encoder, fader and DMX button patches are preserved and reserve their addresses.
+Conflicts, duplicate names, invalid channel orders and combined capacity overflow
+must be corrected before applying. See [Profiles](PROFILES.md) for limits.
+
+With Art-Net ON, a routing change asks **Stop output and apply the new patch?**
+(default No). No discards the proposed application. Yes attempts zero frames on
+old routes and applies with output OFF. Re-enable only when ready. Label-only
+edits do not stop output. Load/reset never enables output.
+
+Manual acceptance: create two groups with different channel orders and explicit
+blocks in two universes; inspect every preview column. Save/reopen and repatch
+one group, then cancel another edit. Check the manual rows/target bytes are
+unchanged and all corresponding fixtures follow RGBW, GM and HOUSE presets.
+Try a block crossing 512 and a manual-address collision; OK must stay disabled.
+On isolated loopback output, decline then accept a live repatch and verify the
+old slots/universes are zeroed and output remains OFF after accepting. Inspect
+keyboard Tab/Enter/Escape, resizing and screen-reader labels on the owner OS.

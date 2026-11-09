@@ -1,5 +1,6 @@
 // BrassCue - GPL-3.0. Canonical, portable configuration; no live values.
 #pragma once
+#include "fixture_groups.hpp"
 #include "network_config.hpp"
 #include "patch.hpp"
 #include "utf8.hpp"
@@ -14,6 +15,7 @@ struct ControlProfile {
     std::array<std::string, 4> encoder_labels{{"RED", "GREEN", "BLUE", "WHITE"}};
     std::array<std::vector<Assignment>, 4> encoders{
         {{{{1, 1}, 255}}, {{{1, 2}, 255}}, {{{1, 3}, 255}}, {{{1, 4}, 255}}}};
+    std::vector<FixtureGroup> fixture_groups; // Generated routes are never stored in encoders.
     std::string fader_label = "GRANDMASTER";
     FaderConfig fader;
     std::array<std::string, 3> button_labels{{"HOUSE 100%", "HOUSE 50%", "HOUSE 0%"}};
@@ -32,6 +34,13 @@ struct ControlProfile {
         }
     }
 };
+inline EncoderPatch effective_encoder_patch(const ControlProfile &p) {
+    auto reserved = p.fader.assignments;
+    for (const auto &button : p.buttons)
+        if (button.action == ButtonActionKind::DmxCue)
+            reserved.insert(reserved.end(), button.assignments.begin(), button.assignments.end());
+    return compile_fixture_patch(p.fixture_groups, p.encoders, reserved);
+}
 inline void validate(const ControlProfile &p) {
     const auto text = [](const std::string &s) {
         if (!valid_utf8(s) || s.empty() || s.size() > 128 ||
@@ -56,6 +65,7 @@ inline void validate(const ControlProfile &p) {
         text(label);
     for (const auto &patch : p.encoders)
         validate(patch);
+    effective_encoder_patch(p);
     validate(p.fader.assignments);
     for (const auto &b : p.buttons) {
         validate(b.assignments);

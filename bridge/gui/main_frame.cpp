@@ -5,8 +5,10 @@
 #include "dark_theme.hpp"
 #include "network_panel.hpp"
 #include "panel_host.hpp"
+#include "profile_commit.hpp"
 #include "profile_editor.hpp"
 #include "profile_files.hpp"
+#include "quick_patch.hpp"
 #include <chrono>
 namespace {
 std::uint64_t Now() {
@@ -91,6 +93,17 @@ class MainFrame final : public wxFrame {
         profile->Append(wxID_SAVE, "Save\tCtrl+S");
         profile->Append(wxID_SAVEAS, "Save as / export...\tCtrl+Shift+S");
         profile->Append(wxID_NEW, "Restore defaults");
+        const int quick_patch = wxID_HIGHEST + 700;
+        profile->AppendSeparator();
+        profile->Append(quick_patch, "&Quick RGBW Patch...\tCtrl+Shift+P");
+        Bind(
+            wxEVT_MENU,
+            [this](wxCommandEvent &) {
+                auto p = session_.profile();
+                if (EditQuickRgbwPatch(this, p))
+                    CommitEdit(std::move(p));
+            },
+            quick_patch);
         auto *bar = new wxMenuBar;
         bar->Append(profile, "&Profile");
 #if BRASSCUE_ENABLE_WEB_PANEL
@@ -130,11 +143,21 @@ class MainFrame final : public wxFrame {
     }
     void Edit(int element) {
         auto p = session_.profile();
-        if (EditProfileElement(this, p, element)) {
-            session_.configure(std::move(p));
-            files_.Changed();
-            ApplyProfile(false);
+        if (EditProfileElement(this, p, element))
+            CommitEdit(std::move(p));
+    }
+    void CommitEdit(brasscue::ControlProfile p) {
+        try {
+            if (CommitProfileEdit(this, session_, output_, std::move(p))) {
+                files_.Changed();
+                ApplyProfile(false);
+            }
+        } catch (const std::exception &e) {
+            wxMessageBox(wxString::FromUTF8(e.what()), "Profile not changed", wxOK | wxICON_ERROR,
+                         this);
         }
+        network_->SetOutput(output_.enabled());
+        RefreshView();
     }
     void Save(bool save_as) {
         try {

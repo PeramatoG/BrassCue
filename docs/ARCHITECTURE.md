@@ -8,6 +8,7 @@ The Uno pinout and physical displays still require verification.
 ```
 bridge/src/
   controller_profile.hpp   canonical configuration, defaults and validation
+  fixture_groups.hpp       canonical RGBW groups, preview layout and derived encoder patch
   patch.hpp                visible addresses, assignments and cue configuration
   assignment_editor.hpp    pure table-row parsing and lossless unit edits
   utf8.hpp                 strict persisted-label validation
@@ -43,6 +44,8 @@ bridge/gui/
   widgets.*                rotary input, cue edges and simulated TFT
   console_fader.*          DPI-scaled fader drawing/input; no live state ownership
   editor_buttons.hpp      standard button order without an implicit default OK
+  quick_patch.*            transactional named groups, blocks and generated preview
+  profile_commit.*         live-route confirmation and stop-before-commit boundary
   profile_editor.*         transactional contextual editor
   profile_files.*          user-selected profile file workflow
 bridge/tests/              pure native unit/integration tests
@@ -79,6 +82,21 @@ of its position. DMX cues are independent unless their patch overlaps. Operation
 `(dmx * 100 + 127) / 255`; percent input maps with `(pct * 255 + 50) / 100`.
 Switching editor units preserves untouched target bytes, even if a displayed
 rounded percentage cannot represent the original byte exactly.
+
+Fixture groups and manual patches are separate canonical profile fields.
+`fixture_layout` validates the RGBW group definitions and produces preview rows;
+`effective_encoder_patch` combines generated target-255 routes with manual rows,
+checks collisions/capacity, and supplies the existing CueEngine. ControllerSession
+caches this derived patch only on successful configuration; every input/preset
+path uses it. Generated routes are never persisted or edited as manual rows.
+Legacy profiles load with no groups. Universe overflow is rejected; multiple
+universes require explicit blocks. See [Profiles](PROFILES.md) for v3 limits.
+
+`CommitProfileEdit` guards both GUI patch workflows. Changed live routing needs
+explicit confirmation, then OutputSession stop/cleanup before configuration.
+Output remains OFF. Candidate validation and declined confirmation have no
+session effect. Packet numbering, output cleanup and engine merge rules remain
+shared with the CLI.
 
 ## Buttons and time
 
@@ -150,7 +168,7 @@ to reviewed segment approximations or numeric codes before a real driver is
 claimed. Leading spaces are the current fixed alignment policy. No physical
 TM1637/ST7735 driver or Uno framebuffer is included.
 
-See [Profiles](PROFILES.md) for the ordered portable v2 schema and explicit v1 migration, and
+See [Profiles](PROFILES.md) for the ordered portable v3 schema and explicit v1/v2 migration, and
 [GUI](GUI.md) for builds and manual checks. No live output values or network ON
 flag are persisted. User profiles are loaded explicitly; startup always uses
 the built-in RGBW Compact preset.

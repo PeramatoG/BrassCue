@@ -36,6 +36,11 @@ class ElementDialog final : public wxDialog {
             mode_->Disable();
         }
         root->Add(mode_, 0, wxEXPAND | wxALL, 6);
+        if (element < 4 && !p.fixture_groups.empty())
+            root->Add(new wxStaticText(this, wxID_ANY,
+                                       "Manual assignments only. Group-generated routes are "
+                                       "managed in Profile > Quick RGBW Patch."),
+                      0, wxEXPAND | wxALL, 6);
         if (element != 8) {
             table_ = new AssignmentTable(
                 this, element < 4 ? p.encoders[element] : p.fader.assignments, {}, p.units);
