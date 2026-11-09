@@ -46,6 +46,7 @@ bridge/gui/
   editor_buttons.hpp      standard button order without an implicit default OK
   quick_patch.*            transactional named groups, blocks and generated preview
   profile_commit.*         live-route confirmation and stop-before-commit boundary
+  encoder_group_routes.*   read-only per-encoder projection of group routes
   profile_editor.*         transactional contextual editor
   profile_files.*          user-selected profile file workflow
 bridge/tests/              pure native unit/integration tests

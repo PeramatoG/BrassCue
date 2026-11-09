@@ -4,6 +4,7 @@
 #include "button_editor.hpp"
 #include "dark_theme.hpp"
 #include "editor_buttons.hpp"
+#include "encoder_group_routes.hpp"
 namespace {
 class ElementDialog final : public wxDialog {
   public:
@@ -36,11 +37,13 @@ class ElementDialog final : public wxDialog {
             mode_->Disable();
         }
         root->Add(mode_, 0, wxEXPAND | wxALL, 6);
-        if (element < 4 && !p.fixture_groups.empty())
-            root->Add(new wxStaticText(this, wxID_ANY,
-                                       "Manual assignments only. Group-generated routes are "
-                                       "managed in Profile > Quick RGBW Patch."),
-                      0, wxEXPAND | wxALL, 6);
+        if (element < 4 && !p.fixture_groups.empty()) {
+            root->Add(CreateEncoderGroupRoutes(this, p, unsigned(element)), 1, wxEXPAND | wxALL, 6);
+            root->Add(new wxStaticText(this, wxID_ANY, "Additional manual assignments (editable)"),
+                      0, wxLEFT | wxRIGHT | wxTOP, 6);
+            SetMinClientSize(FromDIP(wxSize(680, 700)));
+            SetClientSize(FromDIP(wxSize(720, 780)));
+        }
         if (element != 8) {
             table_ = new AssignmentTable(
                 this, element < 4 ? p.encoders[element] : p.fader.assignments, {}, p.units);

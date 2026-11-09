@@ -50,7 +50,7 @@ if(BRASSCUE_BUILD_GUI)
   add_library(brasscue-gui-support
     gui/widgets.cpp gui/console_fader.cpp gui/profile_editor.cpp gui/profile_files.cpp
     gui/assignment_table.cpp gui/button_editor.cpp gui/dark_theme.cpp
-    gui/quick_patch.cpp gui/profile_commit.cpp
+    gui/quick_patch.cpp gui/profile_commit.cpp gui/encoder_group_routes.cpp
     gui/network_panel.cpp gui/native_panel.cpp gui/panel_host.cpp ${brasscue_web_source})
   target_compile_features(brasscue-gui-support PUBLIC cxx_std_17)
   target_compile_definitions(brasscue-gui-support PUBLIC NOMINMAX BRASSCUE_ENABLE_WEB_PANEL=$<BOOL:${BRASSCUE_ENABLE_WEB_PANEL}>)

@@ -189,6 +189,13 @@ Selecting another group retains its draft. OK applies all groups together;
 Cancel discards adds, removals and edits. Use Save / export to persist them in a
 v3 profile, and Open / import after restart. Startup still uses the built-in preset.
 
+Opening an encoder editor shows its fixture-group assignments in a read-only
+list (group, fixture, universe, channel and target). These addresses are already
+assigned to that encoder after Quick Patch OK. The separate **Additional manual
+assignments** table can be empty while the encoder still controls every group
+fixture. Deleting a manual row does not delete group routes; edit/remove those
+in Profile → Quick RGBW Patch.
+
 Manual assignments remain independent. The built-in manual patch occupies 1.1
 through 1.4, so a new block initially starts at 1.5. Choose your actual addresses
 and set the physical fixtures to match separately. Quick Patch never programs

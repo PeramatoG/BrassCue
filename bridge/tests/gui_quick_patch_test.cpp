@@ -1,5 +1,8 @@
 // BrassCue - GPL-3.0. Real modal group drafts and the explicit live-output commit boundary.
+#include "../gui/assignment_table.hpp"
+#include "../gui/encoder_group_routes.hpp"
 #include "../gui/profile_commit.hpp"
+#include "../gui/profile_editor.hpp"
 #include "../gui/quick_patch.hpp"
 #include "../src/profile_io.hpp"
 #include "check.hpp"
@@ -136,6 +139,7 @@ class QuickPatchTestApp final : public wxApp {
         });
         CHECK(!EditQuickRgbwPatch(nullptr, profile));
         CHECK(brasscue::serialize_profile(profile) == before);
+        EncoderVisibility();
         // Confirmation is shared by Quick Patch and manual editors. Only loopback output.
         brasscue::ControllerSession session;
         session.configure(profile);
@@ -170,6 +174,83 @@ class QuickPatchTestApp final : public wxApp {
         hook.Unregister();
         std::cout << "Group modal preview/commit/cancel and live routing confirmation passed\n";
         std::exit(0);
+    }
+    void EncoderVisibility() {
+        // Exact reported case: no manual rows, U2/469, eleven RGBW fixtures through channel 512.
+        brasscue::ControlProfile profile;
+        for (auto &patch : profile.encoders)
+            patch.clear();
+        CallAfter([&] {
+            auto *dialog = Dialog();
+            Click(dialog, QuickPatchId::Add);
+            Text(dialog, QuickPatchId::Name)->SetValue("PANEL SALA 1");
+            auto *blocks =
+                wxDynamicCast(wxWindow::FindWindowById(QuickPatchId::Blocks, dialog), wxGrid);
+            CHECK(blocks);
+            blocks->SetCellValue(0, 0, "2");
+            blocks->SetCellValue(0, 1, "469");
+            blocks->SetCellValue(0, 2, "11");
+            Click(dialog, QuickPatchId::Update);
+            Click(dialog, wxID_OK);
+        });
+        CHECK(EditQuickRgbwPatch(nullptr, profile));
+        brasscue::ControllerSession session;
+        brasscue::OutputSession output;
+        CHECK(CommitProfileEdit(nullptr, session, output, profile));
+        CHECK(!output.enabled());
+        for (unsigned color = 0; color < 4; ++color)
+            session.encoder(color, std::uint8_t(40 + color * 50));
+        session.fader(128);
+        const auto frames = session.engine().render(0);
+        CHECK(frames.size() == 1 && frames.count(2));
+        const auto packet = brasscue::frame_packet(2, frames.at(2));
+        CHECK(packet[14] == 1 && packet[15] == 0); // Visible U2 -> Art-Net wire address 1.
+        for (unsigned slot = 0; slot < 468; ++slot)
+            CHECK(packet[18 + slot] == 0);
+        for (unsigned fixture = 0; fixture < 11; ++fixture)
+            for (unsigned color = 0; color < 4; ++color) {
+                CHECK(session.encoder_patch()[color].size() == 11);
+                CHECK(packet[18 + 468 + fixture * 4 + color] == 20 + color * 25);
+            }
+        const auto original = brasscue::serialize_profile(profile);
+        for (unsigned color = 0; color < 4; ++color) {
+            for (bool accept : {false, true}) {
+                CallAfter([&, color, accept] {
+                    auto *dialog = Dialog();
+                    auto *groups = wxDynamicCast(
+                        wxWindow::FindWindowById(EncoderGroupRoutesId, dialog), wxGrid);
+                    auto *manual = wxDynamicCast(
+                        wxWindow::FindWindowById(AssignmentTable::GridId, dialog), wxGrid);
+                    CHECK(groups && manual && !groups->IsEditable());
+                    CHECK(groups->GetNumberRows() == 11 && manual->GetNumberRows() == 0);
+                    for (unsigned fixture = 0; fixture < 11; ++fixture) {
+                        CHECK(groups->GetCellValue(fixture, 0) == "PANEL SALA 1");
+                        CHECK(groups->GetCellValue(fixture, 2) == "2");
+                        CHECK(groups->GetCellValue(fixture, 3) ==
+                              wxString::Format("%u", 469 + fixture * 4 + color));
+                        CHECK(groups->GetCellValue(fixture, 4) == "255");
+                    }
+                    Click(dialog, accept ? wxID_OK : wxID_CANCEL);
+                });
+                CHECK(EditProfileElement(nullptr, profile, int(color)) == accept);
+                CHECK(brasscue::serialize_profile(profile) == original);
+            }
+        }
+        // Manual and generated assignments coexist in the editor without flattening either source.
+        profile.encoders[0].push_back({{1, 1}, 53});
+        CallAfter([&] {
+            auto *dialog = Dialog();
+            auto *groups =
+                wxDynamicCast(wxWindow::FindWindowById(EncoderGroupRoutesId, dialog), wxGrid);
+            auto *manual =
+                wxDynamicCast(wxWindow::FindWindowById(AssignmentTable::GridId, dialog), wxGrid);
+            CHECK(groups && groups->GetNumberRows() == 11 && manual &&
+                  manual->GetNumberRows() == 1);
+            Click(dialog, wxID_OK);
+        });
+        CHECK(EditProfileElement(nullptr, profile, 0));
+        CHECK(profile.encoders[0].size() == 1 && profile.encoders[0][0].value == 53);
+        CHECK(profile.fixture_groups.size() == 1);
     }
 };
 wxIMPLEMENT_APP(QuickPatchTestApp);
