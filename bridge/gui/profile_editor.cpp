@@ -41,7 +41,7 @@ class ElementDialog final : public wxDialog {
             root->Add(CreateEncoderGroupRoutes(this, p, unsigned(element)), 1, wxEXPAND | wxALL, 6);
             root->Add(new wxStaticText(this, wxID_ANY, "Additional manual assignments (editable)"),
                       0, wxLEFT | wxRIGHT | wxTOP, 6);
-            SetMinClientSize(FromDIP(wxSize(680, 700)));
+            SetMinClientSize(FromDIP(wxSize(680, 600)));
             SetClientSize(FromDIP(wxSize(720, 780)));
         }
         if (element != 8) {

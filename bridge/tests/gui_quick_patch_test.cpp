@@ -251,6 +251,19 @@ class QuickPatchTestApp final : public wxApp {
         CHECK(EditProfileElement(nullptr, profile, 0));
         CHECK(profile.encoders[0].size() == 1 && profile.encoders[0][0].value == 53);
         CHECK(profile.fixture_groups.size() == 1);
+        profile.fixture_groups[0].blocks = {{3, 1, 128}};
+        CallAfter([&] {
+            auto *dialog = Dialog();
+            auto *groups =
+                wxDynamicCast(wxWindow::FindWindowById(EncoderGroupRoutesId, dialog), wxGrid);
+            auto *manual =
+                wxDynamicCast(wxWindow::FindWindowById(AssignmentTable::GridId, dialog), wxGrid);
+            CHECK(groups && groups->GetNumberRows() == 128 && manual);
+            CHECK(groups->GetSize().y < dialog->GetClientSize().y);
+            CHECK(groups->GetScreenRect().GetBottom() < manual->GetScreenRect().GetTop());
+            Click(dialog, wxID_CANCEL);
+        });
+        CHECK(!EditProfileElement(nullptr, profile, 0));
     }
 };
 wxIMPLEMENT_APP(QuickPatchTestApp);

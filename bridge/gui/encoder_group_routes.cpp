@@ -21,6 +21,8 @@ wxWindow *CreateEncoderGroupRoutes(wxWindow *parent, const brasscue::ControlProf
     grid->SetName("Fixture-group assignments for " +
                   wxString::FromUTF8(profile.encoder_labels.at(color)));
     grid->CreateGrid(int(layout.size()), 5);
+    grid->SetMinSize(
+        panel->FromDIP(wxSize(-1, 220))); // Scroll rather than grow with fixture count.
     grid->EnableEditing(false);
     grid->SetTabBehaviour(wxGrid::Tab_Leave);
     grid->SetRowLabelSize(panel->FromDIP(40));
