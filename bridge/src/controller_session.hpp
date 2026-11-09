@@ -55,6 +55,29 @@ class ControllerSession {
         engine_ = std::move(next);
         presets_ = InternalPresets{};
     }
+    ControllerRuntime checkpoint(std::uint64_t now) const {
+        auto copy = *this;
+        copy.advance(now);
+        ControllerRuntime r;
+        r.values = copy.state_;
+        r.patch_fader = copy.patch_fader_;
+        r.internal = copy.presets_.recovery(r.values, copy.profile_.buttons);
+        r.dmx = copy.engine_.recovery(now);
+        validate_runtime(copy.profile_, r);
+        return r;
+    }
+    void restore(ControlProfile profile, const ControllerRuntime &r) {
+        validate(profile);
+        validate_runtime(profile, r);
+        ControllerSession next;
+        next.configure(std::move(profile));
+        next.state_ = r.values;
+        next.patch_fader_ = r.patch_fader;
+        next.presets_.restore(r.internal, r.values);
+        next.engine_.restore(r.dmx);
+        next.sync_values();
+        *this = std::move(next);
+    }
     void advance(std::uint64_t now) {
         const auto previous = state_;
         presets_.advance(state_, now);

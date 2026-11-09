@@ -60,6 +60,7 @@ GUI starts in simulation with Art-Net OFF.
 
 See [GUI builds and manual checks](docs/GUI.md),
 [architecture and output contracts](docs/ARCHITECTURE.md),
-[portable profiles v3 / v1-v2 migration](docs/PROFILES.md), and
+[portable profiles v3 / v1-v2 migration](docs/PROFILES.md),
+[automatic session recovery](docs/SESSION_RECOVERY.md), and
 [BC1 protocol](docs/SERIAL_PROTOCOL.md). Python 3 runs the CLI integration check;
 all C++ test checks remain active in Debug and Release.

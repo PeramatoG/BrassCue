@@ -263,11 +263,13 @@ void CueButton::SetView(const brasscue::ButtonView &view) {
         SetName(wxString::FromUTF8(view.label));
     }
     if (view_.selected != view.selected || view_.phase != view.phase) {
-        SetHelpText(view.phase == "FADE IN"    ? "Transitioning in"
+        SetHelpText(view.phase == "HELD"       ? "Recovered level held until a new command"
+                    : view.phase == "FADE IN"  ? "Transitioning in"
                     : view.phase == "FADE OUT" ? "Transitioning out"
                     : view.selected            ? "Selected"
                                                : "Not selected");
     }
+    SetToolTip(view.phase == "HELD" ? "Recovered level held until a new command" : "");
     view_ = view;
     ++revision_;
     Refresh(false);

@@ -1,4 +1,4 @@
-// BrassCue - GPL-3.0. User-selected portable files; no automatic live-state restore.
+// BrassCue - GPL-3.0. Explicit portable file saving stays independent from session recovery.
 #include "profile_files.hpp"
 #include "../src/profile_io.hpp"
 #include <wx/filedlg.h>
@@ -22,8 +22,11 @@ std::filesystem::path Path(const wxString &text) {
 }
 } // namespace
 bool ProfileFiles::Discard(wxWindow *parent) const {
-    return !dirty_ || wxMessageBox("Discard unsaved profile changes?", "Profile",
-                                   wxYES_NO | wxICON_QUESTION, parent) == wxYES;
+    return !dirty_ ||
+           wxMessageBox(
+               "Replace unsaved portable-profile changes?\n"
+               "Automatic session recovery is separate from Save and will follow the replacement.",
+               "Profile", wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION, parent) == wxYES;
 }
 bool ProfileFiles::Open(wxWindow *parent, brasscue::ControlProfile &result) {
     if (!Discard(parent))

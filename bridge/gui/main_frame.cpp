@@ -1,7 +1,9 @@
 // BrassCue - GPL-3.0. Application coordination only: input, profile workflow, renderer and output.
+#include "main_frame.hpp"
 #include "../src/controller_session.hpp"
 #include "../src/four_digit_display.hpp"
 #include "../src/output_session.hpp"
+#include "../src/session_autosave.hpp"
 #include "dark_theme.hpp"
 #include "network_panel.hpp"
 #include "panel_host.hpp"
@@ -18,9 +20,21 @@ std::uint64_t Now() {
 }
 class MainFrame final : public wxFrame {
   public:
-    MainFrame()
+    explicit MainFrame(const std::filesystem::path &recovery_directory)
         : wxFrame(nullptr, wxID_ANY, "BrassCue", wxDefaultPosition, wxSize(900, 900)),
+          recovery_(recovery_directory.empty()
+                        ? ProfileFiles::Directory().parent_path() / "recovery"
+                        : recovery_directory),
           timer_(this) {
+        const auto restored = recovery_.load();
+        if (restored.snapshot) {
+            session_.restore(restored.snapshot->profile, restored.snapshot->runtime);
+            files_.RestoreDocument(restored.snapshot->document);
+        }
+        recovery_note_ = restored.warning;
+        recovery_label_ = !restored.warning.empty() ? "Recovery warning"
+                          : restored.snapshot       ? "Session restored"
+                                                    : "Auto recovery";
         SetMinClientSize(FromDIP(wxSize(780, 760)));
         SetBackgroundColour(wxColour(22, 24, 29));
         auto *root = new wxBoxSizer(wxVERTICAL);
@@ -45,6 +59,7 @@ class MainFrame final : public wxFrame {
             session_.advance(Now());
             Send();
             RefreshView();
+            RecoveryTick();
         });
         timer_.Start(40);
         Bind(wxEVT_ACTIVATE, [this](wxActivateEvent &e) {
@@ -53,7 +68,12 @@ class MainFrame final : public wxFrame {
             e.Skip();
         });
         Bind(wxEVT_CLOSE_WINDOW, [this](wxCloseEvent &e) {
-            if (e.CanVeto() && !files_.Discard(this)) {
+            panel_->ReleaseInputs();
+            if (!recovery_.flush(Snapshot()) && e.CanVeto() &&
+                wxMessageBox("Automatic session recovery could not be saved. Close anyway?\n" +
+                                 wxString::FromUTF8(recovery_.error()),
+                             "Session recovery", wxYES_NO | wxNO_DEFAULT | wxICON_WARNING,
+                             this) != wxYES) {
                 e.Veto();
                 return;
             }
@@ -90,8 +110,10 @@ class MainFrame final : public wxFrame {
     void Menus() {
         auto *profile = new wxMenu;
         profile->Append(wxID_OPEN, "Open / import...\tCtrl+O");
-        profile->Append(wxID_SAVE, "Save\tCtrl+S");
-        profile->Append(wxID_SAVEAS, "Save as / export...\tCtrl+Shift+S");
+        profile->Append(wxID_SAVE, "Save profile\tCtrl+S",
+                        "Explicitly save configuration to .bcue; automatic recovery also preserves "
+                        "live levels.");
+        profile->Append(wxID_SAVEAS, "Save profile as / export...\tCtrl+Shift+S");
         profile->Append(wxID_NEW, "Restore defaults");
         const int quick_patch = wxID_HIGHEST + 700;
         profile->AppendSeparator();
@@ -135,7 +157,7 @@ class MainFrame final : public wxFrame {
                 if (files_.Discard(this)) {
                     Stop();
                     session_ = brasscue::ControllerSession{};
-                    files_.Changed();
+                    files_.Defaults();
                     ApplyProfile(true);
                 }
             },
@@ -185,14 +207,36 @@ class MainFrame final : public wxFrame {
                                 (output_.enabled()       ? "ON"
                                  : output_error_.empty() ? "OFF"
                                                          : "ERROR") +
-                                " | " + panel_->Mode();
+                                " | " + panel_->Mode() + " | " + recovery_label_;
         if (status_->GetLabel() != wxString::FromUTF8(connection))
             status_->SetLabel(wxString::FromUTF8(connection));
+        const auto help = wxString::FromUTF8(
+            recovery_note_.empty() ? "Session recovery is automatic. Save profile writes portable "
+                                     "configuration separately. Art-Net must be enabled explicitly."
+                                   : recovery_note_);
+        if (status_->GetToolTipText() != help)
+            status_->SetToolTip(help);
         panel_->Apply(brasscue::make_snapshot(session_, display_, now, connection));
         const auto title = wxString::FromUTF8(session_.profile().name) +
                            (files_.dirty() ? " *" : "") + " | BrassCue";
         if (GetTitle() != title)
             SetTitle(title);
+    }
+    brasscue::SessionSnapshot Snapshot() const {
+        return {session_.profile(), session_.checkpoint(Now()), files_.Document()};
+    }
+    void RecoveryTick() {
+        const auto now = Now();
+        if (!recovery_.due(now))
+            return;
+        recovery_.poll(Snapshot(), now);
+        if (!recovery_.error().empty()) {
+            recovery_label_ = "Recovery save failed";
+            recovery_note_ = recovery_.error();
+        } else if (recovery_label_ == "Recovery save failed") {
+            recovery_label_ = "Auto recovery";
+            recovery_note_.clear();
+        }
     }
     void NetworkEdited() {
         Stop();
@@ -244,6 +288,8 @@ class MainFrame final : public wxFrame {
     brasscue::FourDigitDisplay display_;
     brasscue::OutputSession output_;
     ProfileFiles files_;
+    brasscue::SessionAutosave recovery_;
+    std::string recovery_label_, recovery_note_;
     wxTimer timer_;
     PanelHost *panel_ = nullptr;
     NetworkPanel *network_ = nullptr;
@@ -252,6 +298,6 @@ class MainFrame final : public wxFrame {
     std::string output_error_;
 };
 } // namespace
-wxFrame *CreateBrassCueFrame() {
-    return new MainFrame;
+wxFrame *CreateBrassCueFrame(const std::filesystem::path &recovery_directory) {
+    return new MainFrame(recovery_directory);
 }

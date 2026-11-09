@@ -26,9 +26,9 @@ For Ninja omit `-A x64` and specify `-DCMAKE_BUILD_TYPE=Debug` (or Release)
 in separate directories. Windows defaults GUI ON; Linux defaults OFF.
 Linux GUI uses system wxWidgets 3.2 (`libwxgtk3.2-dev`) with
 `cmake -S . -B build-gui -DBRASSCUE_BUILD_GUI=ON -DCMAKE_BUILD_TYPE=Debug`.
-Native GUI configurations run sixteen CTest tests, including real modal editor/button presentation checks and OS keyboard/mouse interaction.
+Native GUI configurations run twenty CTest tests, including real modal editor/button presentation checks and OS keyboard/mouse interaction.
 OS interaction uses wx UI simulation where enabled, or Win32 SendInput on Windows
-vcpkg builds that disable it; other unsupported backends explicitly skip (77). Headless configurations run thirteen. Web builds add an actual embedded-renderer integration test. On Linux run GUI CTest under a display (for example `xvfb-run -a ctest --test-dir build-gui --output-on-failure`). Python 3 is required for test integration. No manifest migration is needed.
+vcpkg builds that disable it; other unsupported backends explicitly skip (77). Headless configurations run sixteen. Web builds add an actual embedded-renderer integration test. On Linux run GUI CTest under a display (for example `xvfb-run -a ctest --test-dir build-gui --output-on-failure`). Python 3 is required for test integration. No manifest migration is needed.
 
 CI includes Windows GUI builds with classic vcpkg and tests in Debug/Release,
 Linux GUI compilation, and four Windows/Linux headless configurations. An added
@@ -126,7 +126,8 @@ Profile operations and limitations are documented in [Profiles](PROFILES.md).
 
 ## Manual Windows acceptance script
 
-1. Launch without Arduino: R/G/B/W zero, GM 100%, output OFF. Resize and check
+1. For a clean baseline, launch without Arduino and use Restore defaults:
+   R/G/B/W zero, GM 100%, output OFF. Normal relaunch recovers the previous session. Resize and check
    at Windows 100%, 150%, 200% DPI, keyboard focus/tab and screen-reader labels.
 2. Wheel/drag/arrow each encoder; check percent, mix and display takeover. Move
    another encoder before two seconds; GM must return two seconds after that move.
@@ -187,7 +188,8 @@ fixture's group, number, universe, start and individual R/G/B/W channel. OK is
 available only after a valid preview; changing fields requires a new preview.
 Selecting another group retains its draft. OK applies all groups together;
 Cancel discards adds, removals and edits. Use Save / export to persist them in a
-v3 profile, and Open / import after restart. Startup still uses the built-in preset.
+v3 portable profile. The application-local session also restores committed groups
+on restart automatically; use Open / import to select a portable configuration.
 
 Opening an encoder editor shows its fixture-group assignments in a read-only
 list (group, fixture, universe, channel and target). These addresses are already
@@ -220,3 +222,27 @@ Try a block crossing 512 and a manual-address collision; OK must stay disabled.
 On isolated loopback output, decline then accept a live repatch and verify the
 old slots/universes are zeroed and output remains OFF after accepting. Inspect
 keyboard Tab/Enter/Escape, resizing and screen-reader labels on the owner OS.
+
+## Automatic session recovery
+
+Startup automatically restores the last committed configuration and checkpointed
+levels/cue state, including edits not exported with Save. Art-Net always starts
+OFF, and an unavailable saved NIC is shown as unavailable without a substitute.
+The status line identifies a restored session or warns about backup recovery or
+save failure. There are no routine blocking startup dialogs.
+
+**Save profile / Save profile as** still writes portable `.bcue` configuration.
+The title's asterisk and associated Save path survive recovery; autosave does not
+clear unsaved portable edits. Closing preserves the session without a discard
+prompt. Open/import and Restore defaults still confirm replacement of unsaved
+portable configuration. An interrupted fade holds its checkpointed level; Flash
+is released safely. See [Session recovery](SESSION_RECOVERY.md) for exact policy,
+backup files, autosave timing and failure handling.
+
+Manual acceptance: change all five logical controls, configure a patch fader and
+unsaved fixture group, select overlapping internal/DMX cues and close/relaunch.
+Verify configuration, levels, held selections and output OFF before explicitly
+enabling an isolated receiver. Repeat with a fade interrupted by termination,
+Flash held, missing NIC, corrupt current snapshot with valid previous snapshot,
+and unavailable recovery storage. Check the asterisk remains until explicit
+portable Save, and that a cancelled modal draft is absent after restart.

@@ -47,6 +47,7 @@
 - Run Debug/Release CTest plus python3 tests/check_source_file_size.py. CI also builds Windows GUI with classic vcpkg.
 - tests/source_file_size_policy.json sets a 600 physical-line maximum; review responsibility around 300–400 lines. No automatic baseline increases.
 - Use concise GPL-3.0 headers without invented attribution; .clang-format defines readable formatting.
-- Keep profiles transactional, preserve untouched target precision on unit changes, keep network OFF on load and explicitly clean abandoned output addresses.
+- Keep portable profiles transactional and configuration-only, preserve untouched target precision on unit changes, keep network OFF on load/recovery and explicitly clean abandoned output addresses.
+- GUI recovery is a separate versioned local snapshot. Reconstruct controller/ownership/cue contributions without replaying input or wall-clock fades; release Flash safely. Autosave committed state only, debounce/checkpoint, retain a validated backup, and never automatically overwrite portable profiles.
 - Update user documentation when behavior changes. Record unexecuted checks and hardware limitations accurately.
 - Work only on the requested feature branch; agents must never merge, publish a release or write directly to main.
