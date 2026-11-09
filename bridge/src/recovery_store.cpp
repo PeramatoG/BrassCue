@@ -139,6 +139,7 @@ RecoveryLoad RecoveryStore::load() const {
         try {
             result.snapshot = parse_session(Read(path));
             result.backup_used = std::string(name) == "previous.bcsession";
+            result.needs_repair = result.backup_used || !Valid(directory_ / "previous.bcsession");
             if (result.backup_used)
                 result.warning = "Previous session snapshot restored; latest recovery was "
                                  "unavailable or invalid";

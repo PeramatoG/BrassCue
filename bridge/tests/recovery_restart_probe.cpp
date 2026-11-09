@@ -26,6 +26,7 @@ int main(int argc, char **argv) {
         s.encoder(0, 42); // Not checkpointed: must not magically replace the durable state.
         std::_Exit(17);
     }
+    CHECK(autosave.error().empty()); // A crashed writer's OS lock must actually be reacquired.
     CHECK(loaded.snapshot && loaded.snapshot->document.dirty);
     CHECK(loaded.snapshot->profile.name == "Unsaved after crash");
     brasscue::ControllerSession s;

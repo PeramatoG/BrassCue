@@ -142,6 +142,20 @@ int main() {
         RecoveryStore partial(root / "partial");
         CHECK(!partial.load().snapshot && !partial.load().warning.empty());
     }
+    {
+        RecoveryStore seed(root / "repair");
+        seed.save(b);
+    }
+    Put(root / "repair/previous.bcsession", "damaged redundant copy");
+    {
+        SessionAutosave repair(root / "repair");
+        const auto data = repair.load();
+        CHECK(data.snapshot && data.needs_repair && !data.backup_used);
+        repair.poll(*data.snapshot, 0);
+        repair.poll(*data.snapshot, 500);
+        CHECK(repair.writes() == 1);
+        CHECK(parse_session(Read(root / "repair/previous.bcsession")).runtime.values.master == 99);
+    }
     CHECK(Read(portable) == original);
     std::filesystem::remove_all(root);
 }

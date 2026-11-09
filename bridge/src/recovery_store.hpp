@@ -9,6 +9,7 @@ struct RecoveryLoad {
     std::optional<SessionSnapshot> snapshot;
     std::string warning;
     bool backup_used = false;
+    bool needs_repair = false;
 };
 class RecoveryStore {
   public:

@@ -4,7 +4,7 @@
 namespace brasscue {
 RecoveryLoad SessionAutosave::load() {
     auto result = store_.load();
-    if (result.snapshot && !result.backup_used)
+    if (result.snapshot && !result.needs_repair)
         saved_ = serialize_session(*result.snapshot);
     error_ = store_.write_error();
     return result;
