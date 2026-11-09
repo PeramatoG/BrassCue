@@ -221,7 +221,8 @@ class QuickPatchDialog final : public wxDialog {
         name_->ChangeValue(wxString::FromUTF8(g.name));
         order_->ChangeValue(wxString::FromUTF8(g.order));
         stride_->ChangeValue(wxString::Format("%u", g.stride));
-        blocks_->AppendRows(int(g.blocks.size()));
+        if (!g.blocks.empty())
+            blocks_->AppendRows(int(g.blocks.size()));
         for (std::size_t row = 0; row < g.blocks.size(); ++row) {
             const auto &b = g.blocks[row];
             blocks_->SetCellValue(row, 0, wxString::Format("%u", b.universe));
