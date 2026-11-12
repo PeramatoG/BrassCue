@@ -57,7 +57,7 @@
       if(data.display!==undefined)byId('display').textContent=data.display;
       if(data.connection!==undefined)byId('connection').textContent=data.connection;
       for(const e of data.encoders){const item=encoders[e.index];item.label.textContent=`${e.label} ${e.percent}%`;item.knob.setAttribute('aria-valuenow',e.value);item.knob.setAttribute('aria-valuetext',`${e.percent}%`);item.indicator.style.transform=`rotate(${e.angle}deg)`;}
-      for(const b of data.buttons){const item=buttons[b.index];item.textContent=b.label;item.setAttribute('aria-pressed',String(b.selected));item.classList.toggle('transitioning',b.phase.startsWith('FADE'));item.title=b.phase.startsWith('FADE')?'Transitioning':'';}
+      for(const b of data.buttons){const item=buttons[b.index];item.textContent=b.label;item.setAttribute('aria-pressed',String(b.selected));item.classList.toggle('transitioning',b.phase.startsWith('FADE'));item.title=b.phase==='HELD'?'Recovered level held until a new command':b.phase.startsWith('FADE')?'Transitioning':'';}
       if(data.screen){const s=data.screen;byId('screen-title').textContent=s.title;byId('color').hidden=s.mode!==0;byId('levels').hidden=s.mode===0;byId('color').style.backgroundColor=`rgb(${s.color.join(',')})`;for(let i=0;i<4;++i){bars[i].name.textContent=s.labels[i];bars[i].bar.value=s.levels[i];bars[i].bar.setAttribute('aria-label',s.labels[i]);}}
       return true;
     }

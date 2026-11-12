@@ -1,6 +1,7 @@
 // BrassCue - GPL-3.0. Last-command control presets; selection is not a numeric level.
 #pragma once
 #include "patch.hpp"
+#include "runtime_state.hpp"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -31,7 +32,8 @@ class InternalPresets {
         if (!allow_match || b.mode == ButtonMode::Flash || b.controls.empty())
             return false;
         for (const auto &a : b.controls) {
-            if (control_value(state, a.target) != a.value || fades_[unsigned(a.target)].running)
+            if (control_value(state, a.target) != a.value ||
+                (fades_[unsigned(a.target)].running || fades_[unsigned(a.target)].held))
                 return false;
             for (std::size_t j = 0; j < 3; ++j)
                 if (j != i && selected_[j])
@@ -43,6 +45,9 @@ class InternalPresets {
     }
     const char *status(std::size_t i, const State &state,
                        const std::array<ButtonConfig, 3> &configs, bool allow_match = true) const {
+        for (const auto &f : fades_)
+            if (f.owner == int(i) && f.held)
+                return "HELD";
         for (const auto &f : fades_)
             if (f.owner == int(i) && f.running)
                 return selected_[i] ? "FADE IN" : "FADE OUT";
@@ -101,6 +106,43 @@ class InternalPresets {
             if (configs[i].action == ButtonActionKind::SetControlValues)
                 button(i, false, state, configs, now);
     }
+    InternalRuntime recovery(State &state, const std::array<ButtonConfig, 3> &configs) const {
+        InternalRuntime r;
+        r.selected = selected_;
+        for (unsigned target = 0; target < 5; ++target) {
+            const auto &f = fades_[target];
+            if (f.owner < 0)
+                continue;
+            if (configs[f.owner].mode == ButtonMode::Flash) {
+                const auto logical = static_cast<ControlTarget>(target);
+                // Held Flash restores its previous value; a released Flash completes release now.
+                set_control_value(state, logical,
+                                  selected_[f.owner] ? control_value(restore_[f.owner], logical)
+                                                     : std::uint8_t(f.target));
+            } else {
+                r.owners[target] = f.owner;
+                r.held[target] =
+                    f.held ||
+                    (f.running &&
+                     control_value(state, static_cast<ControlTarget>(target)) != f.target);
+            }
+        }
+        for (unsigned i = 0; i < 3; ++i)
+            if (configs[i].mode == ButtonMode::Flash)
+                r.selected[i] = false;
+        return r;
+    }
+    void restore(const InternalRuntime &r, const State &state) {
+        selected_ = r.selected;
+        pressed_.fill(false);
+        fades_ = {};
+        for (unsigned target = 0; target < 5; ++target) {
+            auto &f = fades_[target];
+            f.owner = r.owners[target];
+            f.held = r.held[target];
+            f.start = f.target = control_value(state, static_cast<ControlTarget>(target));
+        }
+    }
     bool explicitly_selected(std::size_t i) const {
         return selected_.at(i);
     }
@@ -112,12 +154,14 @@ class InternalPresets {
         unsigned duration = 0;
         int owner = -1;
         bool running = false;
+        bool held = false;
     };
     void cancel(std::size_t i) {
         selected_[i] = false;
         for (auto &f : fades_)
             if (f.owner == int(i)) {
                 f.running = false;
+                f.held = false;
                 f.owner = -1;
             }
     }

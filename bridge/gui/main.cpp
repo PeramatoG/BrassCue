@@ -1,8 +1,7 @@
 // BrassCue - GPL-3.0. See LICENSE for terms and warranty disclaimer.
 #include "dark_theme.hpp"
+#include "main_frame.hpp"
 #include <wx/wx.h>
-
-wxFrame *CreateBrassCueFrame();
 
 class BrassCueApp final : public wxApp {
   public:

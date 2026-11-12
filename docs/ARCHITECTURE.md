@@ -18,7 +18,11 @@ bridge/src/
   cue_engine.hpp           derived cue state, fades, HTP and DMX snapshots
   value_conversion.hpp     neutral percent/DMX conversions
   four_digit_display.hpp   neutral four-character presentation
-  profile_io.*             strict versioned interchange and atomic replacement
+  profile_io.*             strict portable configuration interchange and atomic replacement
+  runtime_state.hpp        stable recovery DTOs and ownership/contribution validation
+  session_snapshot.*       separate checksummed local session format
+  recovery_store.*         validated durable generations and crash-released writer lock
+  session_autosave.*       debounce, transition checkpoints and bounded retry policy
   serial_protocol.hpp      BC1 record parsing and STATE serialization
   serial_session.hpp       handshake timing and bounded line receiver
   serial_port_win.hpp      Windows COM I/O
@@ -170,9 +174,14 @@ claimed. Leading spaces are the current fixed alignment policy. No physical
 TM1637/ST7735 driver or Uno framebuffer is included.
 
 See [Profiles](PROFILES.md) for the ordered portable v3 schema and explicit v1/v2 migration, and
-[GUI](GUI.md) for builds and manual checks. No live output values or network ON
-flag are persisted. User profiles are loaded explicitly; startup always uses
-the built-in RGBW Compact preset.
+[GUI](GUI.md) for builds and manual checks. Portable profiles persist no live values or network ON flag. The GUI restores
+its independent local session snapshot automatically, falling back to an older
+valid snapshot or RGBW Compact defaults. Output always starts OFF. Session
+reconstruction uses static envelope levels plus logical selections and ownership,
+never button replay or final merged frames; interrupted transitions hold at their
+checkpointed level and Flash input is released safely. MainFrame coordinates the
+pure recovery modules with the portable-file document metadata. See
+[Session recovery](SESSION_RECOVERY.md) for policy, storage and dirty-state rules.
 
 
 ## Shared presentation

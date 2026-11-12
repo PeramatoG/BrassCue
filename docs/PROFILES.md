@@ -91,14 +91,18 @@ existing `.tmp` is an error; a failed load leaves the profile intact. Editors ow
 local drafts, including inactive action tables; Cancel has no session effect.
 Accepting a configuration edit preserves controls and resets button
 ownership/transitions. Changing fader role is explicit: GM to patch initializes
-logical GM to 255; patch to GM adopts the patch fader position. GUI open/reset starts RGBW zero, GM 255, output OFF.
+logical GM to 255; patch to GM adopts the patch fader position. GUI explicit open/reset starts RGBW zero, GM 255, output OFF.
 Console `load` preserves current controls and its explicit `--target`; profile
 network preferences cannot redirect it.
 
 No active selection, fade progress, effective/physical control values or network
-ON state is saved. Startup uses built-in RGBW Compact; files load explicitly.
+ON state is saved in a portable profile. Explicit portable files load through
+Open/import. The GUI independently restores its application-local session on
+startup, including committed unsaved configuration and stable live state, with
+output always OFF; see [Session recovery](SESSION_RECOVERY.md).
 Profile menu supports Open/import, Save, Save as/export and Restore defaults.
-An asterisk marks unsaved configuration; discard prompts protect it.
+An asterisk marks unsaved portable configuration; replacement prompts protect it,
+while normal close preserves the independent recovery session.
 
 When a GUI edit changes patch routing while Art-Net is ON, an explicit default-No
 confirmation precedes any session change. Yes stops output and attempts zero

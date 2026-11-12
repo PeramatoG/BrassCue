@@ -3,6 +3,7 @@
 // Hardware-independent, multi-universe cue and control engine.
 #include "bridge_core.hpp"
 #include "patch.hpp"
+#include "runtime_state.hpp"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -80,9 +81,33 @@ class CueEngine {
     }
     const char *button_status(std::size_t i, std::uint64_t now) const {
         const auto &t = tracks_.at(i);
+        if (t.frozen)
+            return "HELD";
         if (level_at(i, now) != t.target)
             return t.target > t.start ? "FADE IN" : "FADE OUT";
         return t.target > 0 ? "ON" : "OFF";
+    }
+    DmxRuntime recovery(std::uint64_t now) const {
+        if (tracks_.size() != 3)
+            throw std::logic_error("Recovery requires three cue buttons");
+        DmxRuntime r;
+        for (unsigned i = 0; i < 3; ++i)
+            if (buttons_[i].action == ButtonActionKind::DmxCue &&
+                buttons_[i].mode == ButtonMode::Toggle) {
+                r.levels[i] = level_at(i, now);
+                r.selected[i] = button_selected(i);
+            }
+        return r; // Flash contributions are released, not reconstructed as held input.
+    }
+    void restore(const DmxRuntime &r) {
+        for (unsigned i = 0; i < 3; ++i) {
+            auto &t = tracks_.at(i);
+            t = {};
+            t.start = r.levels[i];
+            t.target = r.selected[i] ? 1 : 0;
+            if (t.start != t.target)
+                t.frozen = t.start;
+        }
     }
     std::map<std::uint16_t, std::array<std::uint8_t, 512>> render(std::uint64_t now_ms) const {
         std::map<std::uint16_t, std::array<std::uint8_t, 512>> frames;
@@ -136,9 +161,12 @@ class CueEngine {
         double start = 0, target = 0;
         std::uint64_t start_ms = 0;
         unsigned duration_ms = 0;
+        std::optional<double> frozen;
     };
     double level_at(std::size_t i, std::uint64_t now) const {
         const auto &t = tracks_[i];
+        if (t.frozen)
+            return *t.frozen;
         if (!t.duration_ms)
             return t.target;
         if (now <= t.start_ms)
@@ -149,13 +177,15 @@ class CueEngine {
     void set_target(std::size_t i, double target, std::uint64_t now) {
         auto &t = tracks_[i];
         t.start = level_at(i, now);
+        t.frozen.reset();
         t.target = target;
         t.start_ms = now;
         t.duration_ms = target > t.start ? buttons_[i].fade_in_ms : buttons_[i].fade_out_ms;
     }
     void kill_others(std::size_t selected, std::uint64_t now) {
         for (std::size_t i = 0; i < tracks_.size(); ++i)
-            if (i != selected && tracks_[i].target > 0.0)
+            if (i != selected &&
+                (tracks_[i].target > 0.0 || (tracks_[i].frozen && *tracks_[i].frozen > 0)))
                 set_target(i, 0.0, now);
     }
     std::optional<std::uint8_t> master_override_;

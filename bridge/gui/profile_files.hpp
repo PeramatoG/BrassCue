@@ -1,6 +1,7 @@
 // BrassCue - GPL-3.0. GUI profile file workflow, separate from model persistence.
 #pragma once
 #include "../src/controller_profile.hpp"
+#include "../src/session_snapshot.hpp"
 #include <filesystem>
 #include <wx/wx.h>
 class ProfileFiles {
@@ -13,6 +14,17 @@ class ProfileFiles {
     }
     bool dirty() const {
         return dirty_;
+    }
+    brasscue::ProfileDocument Document() const {
+        return {path_.u8string(), dirty_};
+    }
+    void RestoreDocument(const brasscue::ProfileDocument &document) {
+        path_ = std::filesystem::u8path(document.path);
+        dirty_ = document.dirty;
+    }
+    void Defaults() {
+        path_.clear();
+        dirty_ = true;
     }
     static std::filesystem::path Directory();
 
