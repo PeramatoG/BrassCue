@@ -4,7 +4,7 @@ This sheet records the **final shopping selection**, not the earlier DigiKey alt
 
 | Function | Purchased/selected item | Qty | Verified properties |
 | --- | --- | ---: | --- |
-| Controller | Classic Arduino Uno R3 (already available) | 1 | ATmega328P, 5 V logic, 14 digital + 6 analog pins, 2 KB SRAM; USB-B UART |
+| Controller | Classic Arduino Uno R2 (user's photographed blue board; already available) | 1 | ATmega328P, 5 V logic, 14 digital + 6 analog pins, 2 KB SRAM; USB-B UART |
 | R/G/B/W controls | **Bourns PEC11R-4225F-N0024** (RS 789-9557) | 4 | Incremental quadrature, 24 detents/24 pulses per turn, continuous rotation, no push switch, 6 mm D-shaft |
 | Grandmaster | **Bourns PTB0143-2010BPB103** (RS 737-7792) | 1 | Linear 10 kΩ, single-gang, 100 mm travel, approx. 128 × 16 mm body |
 | Independent buttons | **Omron B3F-1070** (RS 686-6907; sold as pack of five) | 3 used | 6 × 6 mm tactile, SPST normally open, 9.5 mm tall, 0.25 mm travel |
@@ -37,14 +37,50 @@ This sheet records the **final shopping selection**, not the earlier DigiKey alt
 | A1 / A2 | TM1637 CLK/DIO |
 | A3 / A4 / A5 | Buttons 1/2/3 |
 | 5 V / GND | Common supply/ground, current budget still to be measured |
-| RESET | Potential shared TFT RESET **only after verifying module reset circuit** |
+| RESET | Proposed shared TFT RES/RST to Uno RESET header (Adafruit example; not yet validated on the received module) |
 | TFT backlight | Fixed on, supply/wiring according to actual module documentation |
 
 The proposed assignment consumes every available general-purpose pin except D0/D1, which remain dedicated to the serial port. No encoder push buttons are included.
 
+## Received hardware observations and TFT reset bench plan (2026-11-10)
+
+**Confirmed from user photographs:** the selected blue controller has `UNO R2` on its underside, an ATmega328P in DIP package, a physical RESET pushbutton, and a RESET header. It is a classic Uno with the intended pin budget; documentation previously called it R3 incorrectly. The received TFT is labeled `1.44 TFT SPI 128*128 V2.0` and has seven pads marked `GND`, `VCC`, `SCK`, `SDA`, `RST` (sometimes called RES), `DC`, `CS`. The displayed identification is consistent with the selected Electronperdido ST7735 GMT144, but the exact board circuit schematic has **not** been verified.
+
+**Reset is NOT an additional control input.** The Uno's RESET pushbutton pulls the Uno reset line low. The proposed TFT RST-to-Uno RESET-header connection lets the same signal reset both devices without taking a general-purpose digital pin. This is specifically documented as an option in Adafruit ST7735's `graphicstest` example, which says to pass `-1` for the reset pin and connect to the Arduino RESET pin. The ST7735 initialization sequence also sends a software-reset command, but that does **not** remove the need to validate the module's hardware reset/power-up behavior.
+
+### Proposed display-to-Uno trial connection — *not yet hardware-verified*
+
+| Received TFT label | Classic Uno connection | Function |
+| --- | --- | --- |
+| GND | GND | Common ground |
+| VCC | 5V **only for the selected module verified against the vendor's 3.3/5 V supply-and-logic specification** | Supply |
+| SCK | D13 | SPI clock |
+| SDA | D11 | SPI MOSI (not I²C SDA) |
+| RST / RES | Arduino RESET **header**, not a GPIO | Shared active-low reset |
+| DC | D9 | Data/command |
+| CS | D10 | SPI chip select |
+
+After wiring and library installation, Adafruit's hardware-SPI example can use:
+
+```cpp
+Adafruit_ST7735 tft(10, 9, -1);  // CS, DC, no GPIO reset; TFT RST wired to Uno RESET
+tft.initR(INITR_144GREENTAB);   // Common 128x128 ST7735 panel initialization, verify display variant
+```
+
+**Supervised bench validation checklist (before soldering or installing in the enclosure):**
+
+1. With USB unplugged, check the silk labels on the actual TFT and Uno; never rely on a connector's physical orientation alone. Check the received board really is the 5 V-compatible purchased variant before applying 5 V.
+2. Optionally, power the Uno **without the TFT connected**, and use a multimeter from RESET to GND to verify high (~5 V) at rest and low (~0 V) while pressing RESET.
+3. Remove power, wire the TFT on a breadboard as proposed, avoid exposed shorts, then power via USB and run a basic single-screen ST7735 test.
+4. Press the Uno RESET button and confirm both the sketch and screen reinitialize. Also check a fresh USB power-up and a USB serial reconnect/upload, which can trigger Uno auto-reset.
+5. If the display does not recover consistently, disconnect it and investigate the module's RES pull-up/reset timing before altering firmware or hardware. Do not claim production readiness based only on the library example.
+6. Validate memory use, power/current, TFT color orientation and backlight behavior separately. This first trial does **not** imply the firmware already drives the TFT or TM1637.
+
+Source: [Adafruit ST7735 graphicstest example](https://github.com/adafruit/Adafruit-ST7735-Library/blob/master/examples/graphicstest/graphicstest.ino). Original vendor source is linked above.
+
 ## Wiring and mechanical precautions
 1. Vendor claims the **GMT144** TFT module supports 3.3 V and 5 V, provided supply and signal levels match. For a classic 5 V Uno, the plan is to run the **specified module** at 5 V with 5 V SPI logic. Do not extrapolate this to other bare ST7735 screens: check the markings/pin labels on the delivered board first.
-2. TFT RESET and backlight are not assigned independent GPIO. Confirm the module's actual RESET and LED circuitry before tying anything to Uno RESET or 5 V. Avoid any direct connection unless electrical behavior is established.
+2. TFT RESET and backlight are not assigned independent GPIO. The received seven-header module has a `RES` pin and no dedicated backlight header. Adafruit's ST7735 example allows tying the display reset to the board RESET header and passing `-1` as the driver reset argument. Confirm the exact module's electrical behavior during a supervised bench test before making this connection permanent.
 3. Bourns encoder terminals are A, C (common), B. Use pullups and switch contacts to ground; don't drive encoder contacts actively. Mechanical bounce is specified at 2 ms max under test conditions, so decoding must reject bounce/invalid steps.
 4. The slider's end terminals (1/3) are intended for 5 V and GND, wiper (2) for A0. Confirm the end orientation with a multimeter before fixing which direction raises the grandmaster.
 5. B3F-1070 is **not** a Cherry MX keyboard switch. It has only 0.25 mm actuation travel. The manufacturer's B32 keycaps are specifically intended for projected-plunger variants, and cannot be assumed to fit this flat-plunger model. For the typewriter aesthetic, plan a custom mechanical actuator/cap after measuring the real parts.
