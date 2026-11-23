@@ -146,6 +146,18 @@ editors can still follow OS/theme settings. No custom frame or undocumented
 Windows theme functions are used; dark title appearance needs a visual check on
 the user's Windows build.
 
+## Resizing the window
+
+The native encoders, fader, cue buttons and TFT repaint their full bounds when
+resized. The three-column layout uses the available space. When the content
+needs more room than the window offers, the viewport scrolls so the cue buttons
+and network settings remain reachable.
+
+To verify on Windows, maximize, restore and shrink the window with the native
+controls visible. Check for a single set of controls at each size and reach the
+bottom cues and network settings in a compact window. Repeat with the TFT in
+Levels mode and at a higher Windows display scaling setting.
+
 ## Controls and contextual editors
 
 Default encoder labels are RED, GREEN, BLUE and WHITE; existing profiles keep their labels.
