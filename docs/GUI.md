@@ -10,7 +10,7 @@ for BC1. Operational levels use percentages, not hexadecimal.
 Use Visual Studio 2026 with Desktop development with C++, CMake/Ninja, and
 Python 3 for tests. Set `VCPKG_ROOT` to your existing classic vcpkg checkout in
 the environment that starts Visual Studio or in your x64 Developer PowerShell.
-Install the native dependency before configuring:
+Install the native dependency before configuring.
 
 ```powershell
 & "$env:VCPKG_ROOT/vcpkg.exe" install wxwidgets:x64-windows --classic
@@ -19,7 +19,7 @@ Install the native dependency before configuring:
 Open the repository folder in Visual Studio, select **Windows x64 Debug** or
 **Windows x64 Release** in the configure-preset picker, build, and select
 `brasscue-gui.exe` as the startup item. The same Ninja presets work in an x64
-Developer PowerShell:
+Developer PowerShell.
 
 ```powershell
 cmake --preset windows-x64-debug
@@ -34,7 +34,7 @@ ctest --preset windows-x64-release
 ```
 
 The presets require CMake 3.21 or newer. To use the Visual Studio 2026
-multi-config generator from the terminal, use CMake 4.2 or newer:
+multi-config generator from the terminal, use CMake 4.2 or newer.
 
 ```powershell
 cmake -S . -B out/vs-x64 -G "Visual Studio 18 2026" -A x64 `
@@ -64,7 +64,7 @@ the DLLs beside the app immediately after linking. CTest launches the app and
 GUI test executables with a system-only PATH. The startup smoke test shows the
 actual main frame and closes it using temporary recovery storage.
 
-From PowerShell, inspect the affected tree (substitute its path):
+Inspect the affected tree from PowerShell. Set `$b` to the path of that build.
 
 ```powershell
 $b = 'out/build/x64-Debug'
@@ -90,7 +90,7 @@ The keyboard test reports a CTest skip (77) if OS input simulation is unavailabl
 
 ## Optional local web presentation
 
-Install the optional feature and use its separate presets:
+Install the optional feature and use its separate presets.
 
 ```powershell
 & "$env:VCPKG_ROOT/vcpkg.exe" install 'wxwidgets[webview]:x64-windows' --classic --recurse
