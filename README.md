@@ -19,7 +19,7 @@ See [hardware selection](docs/HARDWARE.md) and [architecture](docs/ARCHITECTURE.
 The C++17 console simulator emulates RGBW controls and an 8-bit grandmaster. Its initial network adapter creates Art-Net ArtDmx output using DMX slots 1–4 (RGBW) of Port-Address 0. The headless Bridge also supports BC1 serial input from the Uno via `--port COM3` on Windows.
 
 ```sh
-cmake -S . -B build -DBUILD_TESTING=ON
+cmake -S . -B build -DBRASSCUE_BUILD_GUI=OFF -DBUILD_TESTING=ON
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```

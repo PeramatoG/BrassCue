@@ -2,4 +2,5 @@
 #pragma once
 #include <filesystem>
 #include <wx/wx.h>
-wxFrame *CreateBrassCueFrame(const std::filesystem::path &recovery_directory = {});
+wxFrame *CreateBrassCueFrame(const std::filesystem::path &recovery_directory = {},
+                            bool allow_web = true);

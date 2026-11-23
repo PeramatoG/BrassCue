@@ -20,7 +20,7 @@ std::uint64_t Now() {
 }
 class MainFrame final : public wxFrame {
   public:
-    explicit MainFrame(const std::filesystem::path &recovery_directory)
+    MainFrame(const std::filesystem::path &recovery_directory, bool allow_web)
         : wxFrame(nullptr, wxID_ANY, "BrassCue", wxDefaultPosition, wxSize(900, 900)),
           recovery_(recovery_directory.empty()
                         ? ProfileFiles::Directory().parent_path() / "recovery"
@@ -41,10 +41,13 @@ class MainFrame final : public wxFrame {
         status_ = new wxStaticText(this, wxID_ANY, "");
         status_->SetForegroundColour(wxColour(238, 232, 219));
         root->Add(status_, 0, wxALL, 10);
-        panel_ = new PanelHost(this, Actions(), [this] {
-            if (!closing_)
-                RefreshView();
-        });
+        panel_ = new PanelHost(
+            this, Actions(),
+            [this] {
+                if (!closing_)
+                    RefreshView();
+            },
+            allow_web);
         root->Add(panel_, 1, wxEXPAND);
         network_ = new NetworkPanel(
             this, [this] { NetworkEdited(); }, [this](bool enabled) { EnableOutput(enabled); });
@@ -298,6 +301,6 @@ class MainFrame final : public wxFrame {
     std::string output_error_;
 };
 } // namespace
-wxFrame *CreateBrassCueFrame(const std::filesystem::path &recovery_directory) {
-    return new MainFrame(recovery_directory);
+wxFrame *CreateBrassCueFrame(const std::filesystem::path &recovery_directory, bool allow_web) {
+    return new MainFrame(recovery_directory, allow_web);
 }

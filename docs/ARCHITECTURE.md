@@ -147,7 +147,9 @@ snapshot per tick (approximately 25 Hz), including while console input is idle.
 The serial loop preserves spontaneous READY, a single HELLO after 2500 ms if
 needed, and suppression of READY duplicates less than 1000 ms apart. A later
 READY resynchronizes STATE and releases pressed Flash cues. `--ignore-gm` still
-ignores device GM events. Serial ports are not automatically reopened.
+ignores device GM events. Serial ports are not automatically reopened. See the
+[GUI COM plan](SERIAL_PROTOCOL.md#next-step-for-gui-com-support) for the shared
+connection lifecycle and the wx event dispatch boundary.
 
 Full snapshots clear removed channels. A removed universe gets one all-zero
 packet. Stop, target change and normal process exit attempt zero frames for all
