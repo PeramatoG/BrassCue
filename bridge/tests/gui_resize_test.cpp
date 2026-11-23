@@ -100,7 +100,7 @@ class ResizeTestApp final : public wxApp {
 
         frame->SetClientSize(frame->FromDIP(wxSize(520, 380)));
         Pump();
-        CHECK(body->GetScrollRange(wxVERTICAL) > body->GetScrollThumb(wxVERTICAL));
+        CHECK(body->GetVirtualSize().y > body->GetClientSize().y);
         CheckLayout(controls);
         body->Scroll(body->GetScrollRange(wxHORIZONTAL), body->GetScrollRange(wxVERTICAL));
         Pump();
@@ -109,7 +109,8 @@ class ResizeTestApp final : public wxApp {
 
         frame->SetClientSize(frame->FromDIP(wxSize(780, 760)));
         Pump();
-        CHECK(body->GetScrollRange(wxVERTICAL) <= body->GetScrollThumb(wxVERTICAL));
+        CHECK(body->GetVirtualSize() == body->GetClientSize());
+        CHECK(body->GetViewStart() == wxPoint(0, 0));
         CHECK(ScreenRect(*body).Contains(ScreenRect(*output)));
         CHECK(!output->GetValue());
         CheckLayout(controls);
