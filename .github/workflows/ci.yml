@@ -60,11 +60,25 @@ jobs:
           key: windows-wxwidgets-classic-${{ steps.vcpkg.outputs.revision }}-v1
       - name: Configure GUI
         shell: pwsh
-        run: cmake -S . -B out/gui -A x64 "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_TARGET_TRIPLET=x64-windows -DBRASSCUE_BUILD_GUI=ON -DBUILD_TESTING=ON
+        run: cmake -S . -B out/gui -A x64 "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_APPLOCAL_DEPS=ON -DVCPKG_TARGET_TRIPLET=x64-windows -DBRASSCUE_BUILD_GUI=ON -DBUILD_TESTING=ON
       - run: cmake --build out/gui --config Debug --parallel 4
       - run: ctest --test-dir out/gui -C Debug --output-on-failure --no-tests=error
       - run: cmake --build out/gui --config Release --parallel 4
       - run: ctest --test-dir out/gui -C Release --output-on-failure --no-tests=error
+      - name: Build and run Ninja x64 Debug (Visual Studio Open Folder)
+        shell: pwsh
+        run: |
+          $env:VCPKG_ROOT = $env:VCPKG_INSTALLATION_ROOT
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (!$vs) { throw "Visual Studio x64 C++ tools are missing" }
+          Import-Module "$vs\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
+          cmake --preset windows-x64-debug
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build --preset windows-x64-debug --parallel 4
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --preset windows-x64-debug
   linux-gui:
     runs-on: ubuntu-latest
     steps:
@@ -113,7 +127,7 @@ jobs:
           key: windows-wxwidgets-webview-${{ steps.vcpkg.outputs.revision }}-v1
       - name: Configure optional Edge panel
         shell: pwsh
-        run: cmake -S . -B out/web -A x64 "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_TARGET_TRIPLET=x64-windows -DBRASSCUE_BUILD_GUI=ON -DBRASSCUE_ENABLE_WEB_PANEL=ON -DBUILD_TESTING=ON
+        run: cmake -S . -B out/web -A x64 "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_APPLOCAL_DEPS=ON -DVCPKG_TARGET_TRIPLET=x64-windows -DBRASSCUE_BUILD_GUI=ON -DBRASSCUE_ENABLE_WEB_PANEL=ON -DBUILD_TESTING=ON
       - run: cmake --build out/web --config Debug --parallel 4
       - run: ctest --test-dir out/web -C Debug --output-on-failure --no-tests=error
       - run: cmake --build out/web --config Release --parallel 4

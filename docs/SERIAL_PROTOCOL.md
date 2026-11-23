@@ -25,7 +25,7 @@ The Bridge sends its state when READY is received, and after accepted changes. T
 
 ## Windows testing
 
-1. Check out `feature/windows-graphical-simulator` for PR #6 validation and build the CMake project in Visual Studio.
+1. Build the Bridge with the [Windows instructions](GUI.md). The headless preset is sufficient.
 2. Open `firmware/BrassCueFirmware/BrassCueFirmware.ino` with Arduino IDE; upload it to **Arduino Uno**.
 3. **Close Arduino IDE Serial Monitor** (COM ports are exclusive).
 4. Run the Windows Bridge executable from your build folder:
@@ -47,6 +47,26 @@ brasscue-bridge.exe --port COM3 --ignore-gm --target 127.0.0.1 --universe 0
 The output uses ArtDmx on UDP 6454, Port-Address 0, slots 1–4 = RGBW. BC1 BTN edges drive the shared room cue engine on provisional slot 5. Until encoders are attached, values remain at startup defaults: R/G/B/W=0 and master=255.
 
 **Limitations**: The connection is not automatically reopened after unplugging; restart the Bridge. A lost serial connection terminates the Bridge with an error. Art-Net refreshes at about 25 Hz; normal exit attempts zero frames. Hard failure cannot guarantee cleanup. Physical display drivers are not implemented. This prototype is for isolated testing, not unattended stage operation.
+
+## Next step for GUI COM support
+
+Keep BC1 parsing/serialization and handshake timing in the existing portable
+modules. Reuse the Windows COM adapter for exclusive ownership and DTR reset.
+Extract READY/STATE synchronization and duplicate suppression from the CLI loop
+when adding a second caller. Exercise that lifecycle with a fake transport and
+a controlled clock before testing on a physical Uno.
+
+An explicit GUI Connect action should hand COM I/O to a worker, with decoded
+events delivered through a bounded queue to the wx main thread. Apply them to
+the same ControllerSession used by the simulator, cues, recovery and Art-Net.
+Send state back from that session and release hardware-held Flash inputs on
+disconnect. Leave Art-Net OFF at startup and report when the CLI or Arduino
+Serial Monitor already owns the port.
+
+Preserve the logical GM on connection and design pickup for the nonmotorized
+fader before enabling hardware takeover. In a later firmware change, render the
+actual RGBW mixture locally on the ST7735 from BC1 state, without a framebuffer
+or streamed pixels. Validate the TM1637's two central GM digits on the bench.
 
 ## Manual tests before merge
 - Native `ctest` (including `brasscue-serial`) passes on Windows and Linux.

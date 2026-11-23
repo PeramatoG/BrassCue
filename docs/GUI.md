@@ -7,57 +7,108 @@ for BC1. Operational levels use percentages, not hexadecimal.
 
 ## Windows / VS2026 / classic vcpkg
 
-In an x64 Developer PowerShell with the existing vcpkg checkout:
+Use Visual Studio 2026 with Desktop development with C++, CMake/Ninja, and
+Python 3 for tests. Set `VCPKG_ROOT` to your existing classic vcpkg checkout in
+the environment that starts Visual Studio or in your x64 Developer PowerShell.
+Install the native dependency before configuring:
 
 ```powershell
 & "$env:VCPKG_ROOT/vcpkg.exe" install wxwidgets:x64-windows --classic
-cmake -S . -B out/gui-x64 -A x64 `
-  -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
-  -DVCPKG_TARGET_TRIPLET=x64-windows -DVCPKG_MANIFEST_MODE=OFF `
-  -DBRASSCUE_BUILD_GUI=ON -DBUILD_TESTING=ON
-cmake --build out/gui-x64 --config Debug --parallel 4
-ctest --test-dir out/gui-x64 -C Debug --output-on-failure
-cmake --build out/gui-x64 --config Release --parallel 4
-ctest --test-dir out/gui-x64 -C Release --output-on-failure
-.\out\gui-x64\bridge\Debug\brasscue-gui.exe
 ```
 
-For Ninja omit `-A x64` and specify `-DCMAKE_BUILD_TYPE=Debug` (or Release)
-in separate directories. Windows defaults GUI ON; Linux defaults OFF.
-Linux GUI uses system wxWidgets 3.2 (`libwxgtk3.2-dev`) with
-`cmake -S . -B build-gui -DBRASSCUE_BUILD_GUI=ON -DCMAKE_BUILD_TYPE=Debug`.
-Native GUI configurations run twenty CTest tests, including real modal editor/button presentation checks and OS keyboard/mouse interaction.
-OS interaction uses wx UI simulation where enabled, or Win32 SendInput on Windows
-vcpkg builds that disable it; other unsupported backends explicitly skip (77). Headless configurations run sixteen. Web builds add an actual embedded-renderer integration test. On Linux run GUI CTest under a display (for example `xvfb-run -a ctest --test-dir build-gui --output-on-failure`). Python 3 is required for test integration. No manifest migration is needed.
+Open the repository folder in Visual Studio, select **Windows x64 Debug** or
+**Windows x64 Release** in the configure-preset picker, build, and select
+`brasscue-gui.exe` as the startup item. The same Ninja presets work in an x64
+Developer PowerShell:
 
-CI includes Windows GUI builds with classic vcpkg and tests in Debug/Release,
-Linux GUI compilation, and four Windows/Linux headless configurations. An added
-job is not evidence of a passed run: check the actual PR results before merge.
+```powershell
+cmake --preset windows-x64-debug
+cmake --build --preset windows-x64-debug --parallel 4
+ctest --preset windows-x64-debug
+.\out\build\windows-x64-debug\bridge\brasscue-gui.exe
+
+cmake --preset windows-x64-release
+cmake --build --preset windows-x64-release --parallel 4
+ctest --preset windows-x64-release
+.\out\build\windows-x64-release\bridge\brasscue-gui.exe
+```
+
+The presets require CMake 3.21 or newer. To use the Visual Studio 2026
+multi-config generator from the terminal, use CMake 4.2 or newer:
+
+```powershell
+cmake -S . -B out/vs-x64 -G "Visual Studio 18 2026" -A x64 `
+  "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+  -DVCPKG_TARGET_TRIPLET=x64-windows -DVCPKG_MANIFEST_MODE=OFF `
+  -DVCPKG_APPLOCAL_DEPS=ON -DBRASSCUE_BUILD_GUI=ON -DBUILD_TESTING=ON
+cmake --build out/vs-x64 --config Debug --parallel 4
+ctest --test-dir out/vs-x64 -C Debug --output-on-failure --no-tests=error
+cmake --build out/vs-x64 --config Release --parallel 4
+ctest --test-dir out/vs-x64 -C Release --output-on-failure --no-tests=error
+```
+
+The multi-config executables are under `out\vs-x64\bridge\Debug` and
+`out\vs-x64\bridge\Release`. Keep the build's deployed DLLs beside each
+executable. For headless tests on Windows, use the `windows-x64-headless`
+configure, build and test presets without installing wxWidgets. Linux headless
+uses `linux-debug` or `linux-release` with Ninja.
+
+### Diagnosing a missing DLL
+
+Windows status `0xC0000135` means a required DLL could not be loaded.
+Linking uses wxWidgets `.lib` import libraries. At build time vcpkg applocal
+reads executable imports and deploys Windows dependencies recursively from
+the triplet's `debug/bin` for Debug or `bin` for other configurations.
+BrassCue checks the wxWidgets imports against those directories and verifies
+the DLLs beside the app immediately after linking. CTest launches the app and
+GUI test executables with a system-only PATH. The startup smoke test shows the
+actual main frame and closes it using temporary recovery storage.
+
+From PowerShell, inspect the affected tree (substitute its path):
+
+```powershell
+$b = 'out/build/x64-Debug'
+Select-String -Path "$b/CMakeCache.txt" -Pattern '^(CMAKE_GENERATOR|CMAKE_BUILD_TYPE|CMAKE_TOOLCHAIN_FILE|VCPKG_TARGET_TRIPLET|VCPKG_MANIFEST_MODE|VCPKG_APPLOCAL_DEPS|VCPKG_INSTALLED_DIR|wxWidgets_DIR):'
+Get-ChildItem "$b/bridge" -Filter 'wx*.dll' -Recurse
+cmake --build $b --config Debug --target brasscue-gui --verbose
+```
+
+A missing or disabled toolchain hook, an old package path, or an executable
+built before its DLLs were removed can each leave a successful link with no
+usable local runtime. After changing vcpkg, triplet or generator, use a fresh
+preset build tree or **Delete Cache and Reconfigure** in Visual Studio.
+If DLLs were removed from a correctly configured output, rebuild
+`brasscue-gui` with `--clean-first` to rerun the post-link copy. Run each
+configuration's app from its own directory and check that the frame opens,
+reports Art-Net OFF, and closes normally.
+
+Linux native GUI uses `libwxgtk3.2-dev` and
+`cmake -S . -B build-gui -DBRASSCUE_BUILD_GUI=ON -DCMAKE_BUILD_TYPE=Debug`.
+Run GUI tests under a display, for example
+`xvfb-run -a ctest --test-dir build-gui --output-on-failure`.
+The keyboard test reports a CTest skip (77) if OS input simulation is unavailable.
 
 ## Optional local web presentation
 
-Use a separate build directory, retaining the existing native build:
+Install the optional feature and use its separate presets:
 
 ```powershell
 & "$env:VCPKG_ROOT/vcpkg.exe" install 'wxwidgets[webview]:x64-windows' --classic --recurse
-cmake -S . -B out/web-x64 -A x64 `
-  -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
-  -DVCPKG_TARGET_TRIPLET=x64-windows -DVCPKG_MANIFEST_MODE=OFF `
-  -DBRASSCUE_BUILD_GUI=ON -DBRASSCUE_ENABLE_WEB_PANEL=ON -DBUILD_TESTING=ON
-cmake --build out/web-x64 --config Debug --parallel 4
-ctest --test-dir out/web-x64 -C Debug --output-on-failure
-cmake --build out/web-x64 --config Release --parallel 4
-ctest --test-dir out/web-x64 -C Release --output-on-failure
-.\out\web-x64\bridge\Release\brasscue-gui.exe
+cmake --preset windows-x64-web-debug
+cmake --build --preset windows-x64-web-debug --parallel 4
+ctest --preset windows-x64-web-debug
 ```
 
-Install [Microsoft Edge WebView2 Evergreen Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
-(x64) on the target machine. Keep the vcpkg-copied `WebView2Loader.dll` and wx
-runtime DLLs with the executable, plus its `web_assets` directory. A build-time
-feature/header failure is an explicit dependency error. At runtime an absent
-Edge renderer or load/script failure falls back to native controls with a
-status diagnostic; View → Prefer native controls also switches safely. The
-browser test reports missing runtime as SKIP, separately from passing tests.
+Use `windows-x64-web-release` for Release, or set
+`-DBRASSCUE_ENABLE_WEB_PANEL=ON` in a separate Visual Studio generator tree.
+Install the x64 Microsoft Edge WebView2 Evergreen Runtime to exercise the
+renderer. wxWidgets opens `WebView2Loader.dll` dynamically, so the build copies
+that loader explicitly alongside the executable and its `web_assets` directory.
+An absent Edge renderer or load/script failure falls back to native controls
+with a status diagnostic. View → Prefer native controls also switches safely.
+CTest reports an unavailable renderer as a skip. For manual validation, open the
+optional panel and confirm that its controls update before testing native fallback.
+[Microsoft Edge WebView2](https://developer.microsoft.com/microsoft-edge/webview2/)
 
 Linux optional builds also need `libwxgtk-webview3.2-dev`, WebKitGTK >=2.40 and
 its runtime processes. Use `-DBRASSCUE_ENABLE_WEB_PANEL=ON`. Standard package
