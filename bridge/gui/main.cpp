@@ -10,7 +10,8 @@ class BrassCueApp final : public wxApp {
         if (argc == 3 && wxString(argv[1]) == "--runtime-smoke")
             smoke_directory = std::filesystem::u8path(wxString(argv[2]).utf8_string());
         InitializeDarkAppearance();
-        auto *frame = CreateBrassCueFrame(smoke_directory);
+        // The renderer test covers asynchronous Edge startup and interaction separately.
+        auto *frame = CreateBrassCueFrame(smoke_directory, smoke_directory.empty());
         frame->Show();
         if (!smoke_directory.empty())
             CallAfter([frame] { frame->Close(true); });

@@ -4,7 +4,7 @@ if(NOT MSVC OR NOT CMAKE_CXX_COMPILER_ARCHITECTURE_ID MATCHES "^[xX]64$")
   message(FATAL_ERROR "The Windows GUI requires an x64 MSVC toolchain. Select the x64 preset or use an x64 Developer PowerShell.")
 endif()
 if(NOT VCPKG_TOOLCHAIN OR VCPKG_MANIFEST_MODE OR NOT VCPKG_TARGET_TRIPLET STREQUAL "x64-windows"
-    OR NOT VCPKG_APPLOCAL_DEPS OR NOT IS_DIRECTORY "${VCPKG_INSTALLED_DIR}/x64-windows")
+    OR NOT VCPKG_APPLOCAL_DEPS)
   message(FATAL_ERROR
     "The Windows GUI requires classic vcpkg x64-windows with VCPKG_APPLOCAL_DEPS=ON. "
     "Install wxwidgets:x64-windows --classic, set VCPKG_ROOT, and configure a fresh build with "
@@ -12,6 +12,12 @@ if(NOT VCPKG_TOOLCHAIN OR VCPKG_MANIFEST_MODE OR NOT VCPKG_TARGET_TRIPLET STREQU
 endif()
 
 set(brasscue_vcpkg_triplet "${VCPKG_INSTALLED_DIR}/x64-windows")
+if(NOT IS_DIRECTORY "${brasscue_vcpkg_triplet}")
+  message(FATAL_ERROR
+    "The classic vcpkg toolchain '${CMAKE_TOOLCHAIN_FILE}' expects packages in "
+    "'${brasscue_vcpkg_triplet}'. Set VCPKG_ROOT to the checkout where you ran "
+    "vcpkg install wxwidgets:x64-windows --classic, then configure a fresh build.")
+endif()
 get_property(brasscue_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if(brasscue_multi_config)
   set(brasscue_configs ${CMAKE_CONFIGURATION_TYPES})

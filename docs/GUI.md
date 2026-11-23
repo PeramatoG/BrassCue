@@ -9,7 +9,9 @@ for BC1. Operational levels use percentages, not hexadecimal.
 
 Use Visual Studio 2026 with Desktop development with C++, CMake/Ninja, and
 Python 3 for tests. Set `VCPKG_ROOT` to your existing classic vcpkg checkout in
-the environment that starts Visual Studio or in your x64 Developer PowerShell.
+the environment that starts Visual Studio or after opening x64 Developer
+PowerShell. You can also set it in the environment of a local configure preset
+in `CMakeUserPresets.json` that inherits a repository preset.
 Install the native dependency before configuring.
 
 ```powershell
@@ -62,7 +64,8 @@ the triplet's `debug/bin` for Debug or `bin` for other configurations.
 BrassCue checks the wxWidgets imports against those directories and verifies
 the DLLs beside the app immediately after linking. CTest launches the app and
 GUI test executables with a system-only PATH. The startup smoke test shows the
-actual main frame and closes it using temporary recovery storage.
+actual main frame with its native controls and closes it using temporary
+recovery storage. The WebView build also runs an embedded renderer test.
 
 Inspect the affected tree from PowerShell. Set `$b` to the path of that build.
 
