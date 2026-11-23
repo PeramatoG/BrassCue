@@ -15,8 +15,9 @@ set(brasscue_vcpkg_triplet "${VCPKG_INSTALLED_DIR}/x64-windows")
 if(NOT IS_DIRECTORY "${brasscue_vcpkg_triplet}")
   message(FATAL_ERROR
     "The classic vcpkg toolchain '${CMAKE_TOOLCHAIN_FILE}' expects packages in "
-    "'${brasscue_vcpkg_triplet}'. Set VCPKG_ROOT to the checkout where you ran "
-    "vcpkg install wxwidgets:x64-windows --classic, then configure a fresh build.")
+    "'${brasscue_vcpkg_triplet}'. Select the checkout that already has wxWidgets using "
+    "BRASSCUE_VCPKG_ROOT in CMakeUserPresets.json, or set VCPKG_INSTALLED_DIR if its packages "
+    "are stored separately, then configure a fresh build. See docs/GUI.md.")
 endif()
 get_property(brasscue_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if(brasscue_multi_config)

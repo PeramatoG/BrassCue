@@ -8,11 +8,12 @@ for BC1. Operational levels use percentages, not hexadecimal.
 ## Windows / VS2026 / classic vcpkg
 
 Use Visual Studio 2026 with Desktop development with C++, CMake/Ninja, and
-Python 3 for tests. Set `VCPKG_ROOT` to your existing classic vcpkg checkout in
-the environment that starts Visual Studio or after opening x64 Developer
-PowerShell. You can also set it in the environment of a local configure preset
-in `CMakeUserPresets.json` that inherits a repository preset.
-Install the native dependency before configuring.
+Python 3 for tests. The Windows GUI presets pick an external classic vcpkg
+checkout from `VCPKG_ROOT` or from the user's `vcpkg.path.txt` integration
+descriptor under `LOCALAPPDATA` or `APPDATA`. When Visual Studio injects its
+bundled `VC/vcpkg` root, the presets fall back to that descriptor. An existing
+classic wxWidgets installation, such as the one used by Perastage, is enough.
+Run the install command only if the selected checkout lacks wxWidgets.
 
 ```powershell
 & "$env:VCPKG_ROOT/vcpkg.exe" install wxwidgets:x64-windows --classic
@@ -34,6 +35,27 @@ cmake --build --preset windows-x64-release --parallel 4
 ctest --preset windows-x64-release
 .\out\build\windows-x64-release\bridge\brasscue-gui.exe
 ```
+
+If you need to select a specific checkout, add a local configure preset in the
+ignored `CMakeUserPresets.json` with `BRASSCUE_VCPKG_ROOT`. Use the root reported
+by Perastage's `PERASTAGE_RESOLVED_VCPKG_ROOT` cache entry, if available.
+
+```json
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "windows-x64-debug-local",
+      "inherits": "windows-x64-debug",
+      "cacheVariables": { "BRASSCUE_VCPKG_ROOT": "C:/vcpkg" }
+    }
+  ]
+}
+```
+
+After switching an existing build to the new toolchain, use **Delete Cache and
+Reconfigure** in Visual Studio or `cmake --fresh --preset windows-x64-debug`
+with CMake 3.24 or newer. The configure log shows the selected external root.
 
 The presets require CMake 3.21 or newer. To use the Visual Studio 2026
 multi-config generator from the terminal, use CMake 4.2 or newer.

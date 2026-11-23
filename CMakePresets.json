@@ -20,7 +20,7 @@
       "name": "windows-gui",
       "hidden": true,
       "inherits": "windows-x64",
-      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "toolchainFile": "${sourceDir}/cmake/BrassCueWindowsVcpkgToolchain.cmake",
       "cacheVariables": {
         "BRASSCUE_BUILD_GUI": "ON",
         "VCPKG_TARGET_TRIPLET": "x64-windows",
