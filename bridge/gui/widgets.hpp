@@ -12,6 +12,7 @@ class EncoderKnob final : public wxPanel {
     void CheckPointer();
 
   private:
+    int Radius() const;
     std::pair<double, double> Point(const wxMouseEvent &) const;
     int value_ = 0;
     brasscue::EncoderGesture gesture_;

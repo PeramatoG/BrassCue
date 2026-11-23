@@ -3,6 +3,15 @@
 #include <algorithm>
 #include <cmath>
 #include <wx/dcbuffer.h>
+namespace {
+void RepaintOnResize(wxWindow &window) {
+    window.Bind(wxEVT_SIZE, [&window](wxSizeEvent &event) {
+        // Painted geometry depends on the entire client rectangle.
+        window.Refresh(false);
+        event.Skip();
+    });
+}
+}
 #if defined(__WXMSW__) && wxUSE_ACCESSIBILITY
 #include <wx/access.h>
 namespace {
@@ -42,16 +51,19 @@ class CueAccessible final : public wxWindowAccessible {
 } // namespace
 #endif
 EncoderKnob::EncoderKnob(wxWindow *parent, std::function<void(int)> delta)
-    : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(100, 90)), changed_(std::move(delta)) {
-    SetMinSize(FromDIP(wxSize(100, 90)));
+    : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+              wxTAB_TRAVERSAL | wxFULL_REPAINT_ON_RESIZE),
+      changed_(std::move(delta)) {
+    SetMinSize(FromDIP(wxSize(100, 78)));
     SetBackgroundStyle(wxBG_STYLE_PAINT);
+    RepaintOnResize(*this);
     SetCanFocus(true);
     Bind(wxEVT_PAINT, [this](wxPaintEvent &) {
         wxAutoBufferedPaintDC dc(this);
         dc.SetBackground(wxBrush(wxColour(33, 37, 44)));
         dc.Clear();
         const auto sz = GetClientSize();
-        const int x = sz.x / 2, y = sz.y / 2, r = std::max(1, std::min(sz.x, sz.y) / 2 - 10);
+        const int x = sz.x / 2, y = sz.y / 2, r = Radius();
         dc.SetPen(wxPen(wxColour(205, 161, 84), 2));
         dc.SetBrush(wxBrush(wxColour(43, 48, 56)));
         dc.DrawCircle(x, y, r);
@@ -102,9 +114,13 @@ EncoderKnob::EncoderKnob(wxWindow *parent, std::function<void(int)> delta)
         }
     });
 }
-std::pair<double, double> EncoderKnob::Point(const wxMouseEvent &e) const {
+int EncoderKnob::Radius() const {
     auto s = GetClientSize();
-    double radius = std::max(1, std::min(s.x, s.y) / 2 - 10);
+    return std::max(1, std::min(s.x, s.y) / 2 - FromDIP(10));
+}
+std::pair<double, double> EncoderKnob::Point(const wxMouseEvent &e) const {
+    const auto s = GetClientSize();
+    const double radius = Radius();
     return {(e.GetX() - s.x / 2) / radius, (e.GetY() - s.y / 2) / radius};
 }
 void EncoderKnob::SetValue(int value) {
@@ -123,18 +139,26 @@ void EncoderKnob::CheckPointer() {
         Release();
 }
 ColorPreview::ColorPreview(wxWindow *parent)
-    : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(180, 180)) {
-    SetMinSize(FromDIP(wxSize(180, 180)));
+    : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+              wxTAB_TRAVERSAL | wxFULL_REPAINT_ON_RESIZE) {
+    SetMinSize(FromDIP(wxSize(120, 160)));
     SetBackgroundStyle(wxBG_STYLE_PAINT);
+    RepaintOnResize(*this);
     Bind(wxEVT_PAINT, [this](wxPaintEvent &) {
         wxAutoBufferedPaintDC dc(this);
         dc.SetBackground(wxBrush(wxColour(22, 24, 29)));
         dc.Clear();
         dc.SetTextForeground(wxColour(238, 232, 219));
-        dc.DrawText(wxString::FromUTF8(view_.title), 8, 6);
-        auto size = GetClientSize();
-        const int side = std::max(1, std::min(size.x - 16, size.y - 40)), x = (size.x - side) / 2,
-                  y = 32;
+        dc.SetFont(GetFont());
+        const auto size = GetClientSize();
+        const int pad = FromDIP(8);
+        const int title_y = FromDIP(6);
+        dc.DrawText(wxControl::Ellipsize(wxString::FromUTF8(view_.title), dc, wxELLIPSIZE_END,
+                                         std::max(0, size.x - 2 * pad)),
+                    pad, title_y);
+        const int y = title_y + dc.GetCharHeight() + FromDIP(10);
+        const int side = std::max(1, std::min(size.x - 2 * pad, size.y - y - pad));
+        const int x = (size.x - side) / 2;
         dc.SetPen(wxPen(wxColour(205, 161, 84), 1));
         dc.SetBrush(wxBrush(view_.mode == brasscue::ScreenView::Color
                                 ? wxColour(view_.color[0], view_.color[1], view_.color[2])
@@ -144,12 +168,21 @@ ColorPreview::ColorPreview(wxWindow *parent)
             int label_width = 0;
             for (const auto &label : view_.labels)
                 label_width = std::max(label_width, dc.GetTextExtent(wxString::FromUTF8(label)).x);
-            const int bar_x = label_width + 14;
+            label_width = std::min(label_width, std::max(0, (side - 3 * pad) / 2));
+            const int bar_x = x + label_width + 2 * pad;
+            const int bar_width = std::max(0, x + side - pad - bar_x);
+            const int row_height = std::max(1, (side - 2 * pad) / 4);
+            const int bar_height = std::min(FromDIP(16), row_height);
             for (unsigned i = 0; i < 4; ++i) {
-                dc.DrawText(wxString::FromUTF8(view_.labels[i]), x + 6, y + 8 + i * 30);
+                const int row_y = y + pad + int(i) * row_height;
+                dc.DrawText(wxControl::Ellipsize(wxString::FromUTF8(view_.labels[i]), dc,
+                                                 wxELLIPSIZE_END, label_width),
+                            x + pad, row_y + (row_height - dc.GetCharHeight()) / 2);
                 dc.SetBrush(wxBrush(wxColour(205, 161, 84)));
-                dc.DrawRectangle(x + bar_x, y + 10 + i * 30,
-                                 int(view_.levels[i]) * std::max(1, side - bar_x - 8) / 100, 16);
+                const int width = int(view_.levels[i]) * bar_width / 100;
+                if (width > 0)
+                    dc.DrawRectangle(bar_x, row_y + (row_height - bar_height) / 2, width,
+                                     bar_height);
             }
         }
     });
@@ -161,11 +194,13 @@ void ColorPreview::SetView(const brasscue::ScreenViewData &view) {
     Refresh();
 }
 CueButton::CueButton(wxWindow *parent, std::function<void(bool)> event)
-    : wxControl(parent, wxID_ANY, wxDefaultPosition, wxSize(100, 70), wxBORDER_NONE),
+    : wxControl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                wxBORDER_NONE | wxFULL_REPAINT_ON_RESIZE),
       event_(std::move(event)) {
     SetCanFocus(true);
     SetMinSize(FromDIP(wxSize(80, 50)));
     SetBackgroundStyle(wxBG_STYLE_PAINT);
+    RepaintOnResize(*this);
     SetBackgroundColour(wxColour(43, 48, 56));
     SetForegroundColour(wxColour(238, 232, 219));
     Bind(wxEVT_PAINT, [this](wxPaintEvent &) {
@@ -183,7 +218,9 @@ CueButton::CueButton(wxWindow *parent, std::function<void(bool)> event)
         dc.DrawRoundedRectangle(1, 1, std::max(1, size.x - 2), std::max(1, size.y - 2), 4);
         dc.SetTextForeground(view_.selected ? wxColour(255, 196, 93) : wxColour(238, 232, 219));
         dc.SetFont(GetFont());
-        dc.DrawLabel(GetLabel(), GetClientRect(), wxALIGN_CENTER);
+        const auto label_rect = GetClientRect().Deflate(FromDIP(8), 0);
+        dc.DrawLabel(wxControl::Ellipsize(GetLabel(), dc, wxELLIPSIZE_END, label_rect.width),
+                     label_rect, wxALIGN_CENTER);
         if (HasFocus()) {
             dc.SetBrush(*wxTRANSPARENT_BRUSH);
             dc.SetPen(wxPen(wxColour(255, 196, 93), 1, wxPENSTYLE_DOT));

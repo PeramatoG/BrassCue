@@ -12,6 +12,7 @@
 #include "profile_files.hpp"
 #include "quick_patch.hpp"
 #include <chrono>
+#include <wx/scrolwin.h>
 namespace {
 std::uint64_t Now() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -35,25 +36,36 @@ class MainFrame final : public wxFrame {
         recovery_label_ = !restored.warning.empty() ? "Recovery warning"
                           : restored.snapshot       ? "Session restored"
                                                     : "Auto recovery";
-        SetMinClientSize(FromDIP(wxSize(780, 760)));
         SetBackgroundColour(wxColour(22, 24, 29));
+        body_ = new wxScrolledWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                                     wxHSCROLL | wxVSCROLL | wxTAB_TRAVERSAL);
+        body_->SetBackgroundColour(GetBackgroundColour());
+        body_->SetScrollRate(FromDIP(12), FromDIP(12));
+        body_->SetMinSize(FromDIP(wxSize(520, 380)));
+        SetMinClientSize(body_->GetMinSize());
         auto *root = new wxBoxSizer(wxVERTICAL);
-        status_ = new wxStaticText(this, wxID_ANY, "");
+        status_ = new wxStaticText(body_, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
+                                   wxST_ELLIPSIZE_END);
         status_->SetForegroundColour(wxColour(238, 232, 219));
-        root->Add(status_, 0, wxALL, 10);
+        root->Add(status_, 0, wxEXPAND | wxALL, 10);
         panel_ = new PanelHost(
-            this, Actions(),
+            body_, Actions(),
             [this] {
-                if (!closing_)
+                if (!closing_) {
                     RefreshView();
+                    body_->FitInside();
+                }
             },
             allow_web);
         root->Add(panel_, 1, wxEXPAND);
         network_ = new NetworkPanel(
-            this, [this] { NetworkEdited(); }, [this](bool enabled) { EnableOutput(enabled); });
+            body_, [this] { NetworkEdited(); }, [this](bool enabled) { EnableOutput(enabled); });
         root->Add(network_, 0, wxEXPAND | wxALL, 8);
         Menus();
-        SetSizer(root);
+        body_->SetSizer(root);
+        auto *frame_layout = new wxBoxSizer(wxVERTICAL);
+        frame_layout->Add(body_, 1, wxEXPAND);
+        SetSizer(frame_layout);
         ApplyDarkTitle(*this);
         Bind(wxEVT_TIMER, [this](wxTimerEvent &) {
             if (closing_)
@@ -201,6 +213,7 @@ class MainFrame final : public wxFrame {
         }
         RefreshView();
         Layout();
+        body_->FitInside();
     }
     void RefreshView() {
         const auto now = Now();
@@ -294,6 +307,7 @@ class MainFrame final : public wxFrame {
     brasscue::SessionAutosave recovery_;
     std::string recovery_label_, recovery_note_;
     wxTimer timer_;
+    wxScrolledWindow *body_ = nullptr;
     PanelHost *panel_ = nullptr;
     NetworkPanel *network_ = nullptr;
     wxStaticText *status_ = nullptr;

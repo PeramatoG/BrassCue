@@ -38,7 +38,8 @@ class FaderAccessible final : public wxWindowAccessible {
 } // namespace
 #endif
 ConsoleFader::ConsoleFader(wxWindow *parent, wxWindowID id, std::function<void(int)> changed)
-    : wxControl(parent, id, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE | wxWANTS_CHARS),
+    : wxControl(parent, id, wxDefaultPosition, wxDefaultSize,
+                wxBORDER_NONE | wxWANTS_CHARS | wxFULL_REPAINT_ON_RESIZE),
       changed_(std::move(changed)) {
     SetInitialSize(FromDIP(wxSize(80, 360)));
     SetMinSize(FromDIP(wxSize(80, 160)));
@@ -52,7 +53,7 @@ ConsoleFader::ConsoleFader(wxWindow *parent, wxWindowID id, std::function<void(i
 #endif
     Bind(wxEVT_PAINT, &ConsoleFader::Paint, this);
     Bind(wxEVT_SIZE, [this](wxSizeEvent &e) {
-        Refresh();
+        Refresh(false);
         e.Skip();
     });
     Bind(wxEVT_SET_FOCUS, [this](wxFocusEvent &e) {
