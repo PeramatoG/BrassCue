@@ -76,8 +76,9 @@ class ResizeTestApp final : public wxApp {
         for (std::size_t i = 0; i < controls.size(); ++i)
             controls[i]->Bind(wxEVT_PAINT, [&, i](wxPaintEvent &event) {
                 const auto &control = *controls[i];
-                redrawn[i] |=
-                    control.GetUpdateRegion().Contains(control.GetClientRect()) == wxInRegion;
+                wxRegion undamaged(control.GetClientRect());
+                undamaged.Subtract(control.GetUpdateRegion());
+                redrawn[i] |= undamaged.IsEmpty();
                 event.Skip();
             });
 #endif
