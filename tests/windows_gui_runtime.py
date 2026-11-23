@@ -20,7 +20,12 @@ def main():
     try:
         with tempfile.TemporaryDirectory(prefix="brasscue-gui-") as directory:
             result = subprocess.run(
-                [str(executable), *args], cwd=directory, env=env, timeout=int(timeout)
+                [str(executable), *args],
+                cwd=directory,
+                env=env,
+                stdout=sys.stdout,
+                stderr=sys.stderr,
+                timeout=int(timeout),
             )
     except subprocess.TimeoutExpired:
         print(f"{executable.name} did not exit in {timeout} seconds", file=sys.stderr)
